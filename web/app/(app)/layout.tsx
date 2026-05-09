@@ -25,11 +25,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     redirect("/login?error=not_allowed");
   }
 
-  const isAdmin = allowed.role === "admin";
+  // 注: isAdmin は PR-6 の設定画面（カテゴリ管理 / ホワイトリスト管理）で
+  //     コンテキスト経由 or props で参照する想定。現状ナビは admin 専用項目を
+  //     持たないため、ここでは取得しない。
 
   return (
     <div className="flex min-h-svh">
-      <SideNav isAdmin={isAdmin} />
+      <SideNav />
       <main className="flex-1 pb-20 md:pb-0">
         <div className="mx-auto max-w-2xl px-4 py-6 md:px-6 md:py-8">{children}</div>
       </main>

@@ -18,11 +18,12 @@ const validBase = {
       quantity: 1,
       unit: "袋",
       total_price: 198,
-      category: "vegetable",
+      category_hint: "食費",
     },
   ],
   discounts: [],
   confidence: 0.92,
+  store_category_hint: "supermarket",
 };
 
 describe("validateOcrResult", () => {
@@ -33,8 +34,10 @@ describe("validateOcrResult", () => {
     expect(out.total_amount).toBe(1623);
     expect(out.items).toHaveLength(1);
     expect(out.items[0]!.raw_name).toBe("玉ねぎ");
+    expect(out.items[0]!.category_hint).toBe("食費");
     expect(out.discounts).toEqual([]);
     expect(out.confidence).toBeCloseTo(0.92, 2);
+    expect(out.store_category_hint).toBe("supermarket");
   });
 
   it("非オブジェクトは throw", () => {
@@ -50,14 +53,14 @@ describe("validateOcrResult", () => {
   });
 
   it("items が未定義なら throw", () => {
-    const { items: _, ...rest } = validBase;
-    void _;
+    const { items: _items, ...rest } = validBase;
+    void _items;
     expect(() => validateOcrResult(rest)).toThrow(OcrValidationError);
   });
 
   it("total_amount が無いと throw", () => {
-    const { total_amount: _, ...rest } = validBase;
-    void _;
+    const { total_amount: _amount, ...rest } = validBase;
+    void _amount;
     expect(() => validateOcrResult(rest)).toThrow(/total_amount/);
   });
 
@@ -71,6 +74,22 @@ describe("validateOcrResult", () => {
     expect(out.total_amount).toBe(1500);
   });
 
+  it("ISO 8601 日時（時刻付き）も許容", () => {
+    const out = validateOcrResult({
+      ...validBase,
+      purchased_at: "2026-04-27T18:32:00",
+    });
+    expect(out.purchased_at).toBe("2026-04-27T18:32:00");
+  });
+
+  it("ISO 8601 日時 (タイムゾーン付き) も許容", () => {
+    const out = validateOcrResult({
+      ...validBase,
+      purchased_at: "2026-04-27T18:32:00+09:00",
+    });
+    expect(out.purchased_at).toBe("2026-04-27T18:32:00+09:00");
+  });
+
   it("purchased_at の形式が不正なら今日（JST）の日付を fallback", () => {
     const todayJst = jstToday();
     const out = validateOcrResult({ ...validBase, purchased_at: "2026/04/27" });
@@ -79,25 +98,25 @@ describe("validateOcrResult", () => {
 
   it("purchased_at が無い場合も今日（JST）の日付を fallback", () => {
     const todayJst = jstToday();
-    const { purchased_at: _, ...rest } = validBase;
-    void _;
+    const { purchased_at: _purchased, ...rest } = validBase;
+    void _purchased;
     const out = validateOcrResult(rest);
     expect(out.purchased_at).toBe(todayJst);
   });
 
-  it("不正な category は other に丸める", () => {
+  it("category_hint が標準名と一致しなければ null", () => {
     const out = validateOcrResult({
       ...validBase,
-      items: [{ ...validBase.items[0]!, category: "imaginary" }],
+      items: [{ ...validBase.items[0]!, category_hint: "imaginary" }],
     });
-    expect(out.items[0]!.category).toBe("other");
+    expect(out.items[0]!.category_hint).toBeNull();
   });
 
-  it("category 未指定は other", () => {
+  it("category_hint 未指定は null", () => {
     const item = { ...validBase.items[0] } as Record<string, unknown>;
-    delete item.category;
+    delete item.category_hint;
     const out = validateOcrResult({ ...validBase, items: [item] });
-    expect(out.items[0]!.category).toBe("other");
+    expect(out.items[0]!.category_hint).toBeNull();
   });
 
   it("item.raw_name が空なら throw", () => {
@@ -160,8 +179,8 @@ describe("validateOcrResult", () => {
   });
 
   it("confidence が無ければ 0.5 を fallback", () => {
-    const { confidence: _, ...rest } = validBase;
-    void _;
+    const { confidence: _conf, ...rest } = validBase;
+    void _conf;
     expect(validateOcrResult(rest).confidence).toBe(0.5);
   });
 
@@ -170,5 +189,20 @@ describe("validateOcrResult", () => {
     expect(out.store_name).toBeNull();
     const out2 = validateOcrResult({ ...validBase, store_name: "  ライフ  " });
     expect(out2.store_name).toBe("ライフ");
+  });
+
+  it("store_category_hint が標準値と一致しなければ null", () => {
+    const out = validateOcrResult({
+      ...validBase,
+      store_category_hint: "imaginary",
+    });
+    expect(out.store_category_hint).toBeNull();
+  });
+
+  it("store_category_hint 未指定は null", () => {
+    const { store_category_hint: _h, ...rest } = validBase;
+    void _h;
+    const out = validateOcrResult(rest);
+    expect(out.store_category_hint).toBeNull();
   });
 });

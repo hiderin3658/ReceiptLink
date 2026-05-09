@@ -2,17 +2,19 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Receipt, Plus, Settings, Shield } from "lucide-react";
+import { Home, Receipt, Plus, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// ホワイトリスト管理 (admin only) は /settings ページ内で表示する設計のため、
+// 専用 /admin ナビは持たない。
 const NAV_ITEMS = [
   { href: "/dashboard", label: "ホーム", icon: Home },
-  { href: "/shopping", label: "履歴", icon: Receipt },
-  { href: "/shopping/new", label: "追加", icon: Plus },
+  { href: "/expense", label: "履歴", icon: Receipt },
+  { href: "/expense/new", label: "追加", icon: Plus },
   { href: "/settings", label: "設定", icon: Settings },
 ] as const;
 
-export function SideNav({ isAdmin }: { isAdmin: boolean }) {
+export function SideNav() {
   const pathname = usePathname();
 
   return (
@@ -43,22 +45,6 @@ export function SideNav({ isAdmin }: { isAdmin: boolean }) {
                 </li>
               );
             })}
-            {isAdmin && (
-              <li className="pt-2">
-                <Link
-                  href="/admin"
-                  className={cn(
-                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-                    pathname.startsWith("/admin")
-                      ? "bg-[var(--color-accent)] text-[var(--color-accent-foreground)]"
-                      : "text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]",
-                  )}
-                >
-                  <Shield size={18} aria-hidden />
-                  管理
-                </Link>
-              </li>
-            )}
           </ul>
         </nav>
       </div>

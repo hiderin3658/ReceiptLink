@@ -7,8 +7,8 @@ import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "ホーム", icon: Home },
-  { href: "/shopping", label: "履歴", icon: Receipt },
-  { href: "/shopping/new", label: "追加", icon: Plus },
+  { href: "/expense", label: "履歴", icon: Receipt },
+  { href: "/expense/new", label: "追加", icon: Plus },
   { href: "/settings", label: "設定", icon: Settings },
 ] as const;
 

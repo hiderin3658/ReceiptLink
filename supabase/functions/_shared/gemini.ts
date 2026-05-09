@@ -5,8 +5,24 @@
 //
 // 認証は API key（ヘッダ x-goog-api-key）。OAuth 等は使わない。
 
-import { calculateCostUsd } from "./budget.ts";
 import { maskString } from "./sanitize.ts";
+
+// =====================================================================
+// 料金概算（参考値、単位: USD per 1M tokens）
+// 公式料金表は変動するため、ai_advice_logs.cost_usd は概算値とする。
+// 月次予算機能 (Phase 2 以降) で本格的な料金管理を導入する想定。
+// =====================================================================
+const MODEL_PRICING_USD_PER_1M_TOKENS: Record<string, { input: number; output: number }> = {
+  "gemini-2.5-flash": { input: 0.30, output: 2.50 },
+  "gemini-2.5-pro": { input: 1.25, output: 5.00 },
+};
+
+function calculateCostUsd(model: string, tokensIn: number, tokensOut: number): number {
+  const pricing = MODEL_PRICING_USD_PER_1M_TOKENS[model];
+  if (!pricing) return 0;
+  return (tokensIn / 1_000_000) * pricing.input + (tokensOut / 1_000_000) * pricing.output;
+}
+
 import type {
   GeminiCallMeta,
   GeminiCallResult,

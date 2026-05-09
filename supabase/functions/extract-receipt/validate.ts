@@ -3,21 +3,11 @@
 // LLM の出力は JSON Schema で固定しても乱れることがあるため、必須項目の存在と
 // 型を厳密にチェックして安全に整形する。純粋関数として実装し vitest で検証。
 
+import { STANDARD_CATEGORY_NAMES, STORE_CATEGORY_HINTS } from "../_shared/prompts.ts";
 import type { OcrItem, OcrResult } from "../_shared/types.ts";
 
-const VALID_CATEGORIES = new Set([
-  "vegetable",
-  "meat",
-  "fish",
-  "dairy",
-  "grain",
-  "seasoning",
-  "beverage",
-  "sweet",
-  "fruit",
-  "egg",
-  "other",
-]);
+const VALID_CATEGORY_HINTS = new Set<string>(STANDARD_CATEGORY_NAMES);
+const VALID_STORE_HINTS = new Set<string>(STORE_CATEGORY_HINTS);
 
 /** 検証エラーを表す。呼び出し側で catch して fallback / log する */
 export class OcrValidationError extends Error {
@@ -27,13 +17,15 @@ export class OcrValidationError extends Error {
   }
 }
 
-/** YYYY-MM-DD 形式の日付文字列を緩めにバリデートする */
-function isYmd(s: unknown): s is string {
-  return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
+/** ISO 8601 日付（YYYY-MM-DD）または日時（YYYY-MM-DDTHH:mm[:ss]）の緩いバリデート */
+function isIsoDateLike(s: unknown): s is string {
+  return (
+    typeof s === "string" &&
+    /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?)?$/.test(s)
+  );
 }
 
-/** 今日の日付を JST (Asia/Tokyo) で返す。purchased_at の fallback 用。
- *  UTC で取ると JST 9 時前の利用は 1 日ずれるため、明示的に +9h して扱う。 */
+/** 今日の日付を JST (Asia/Tokyo) で返す。purchased_at の fallback 用。 */
 function todayInJst(): string {
   const now = new Date();
   const jstShifted = new Date(now.getTime() + 9 * 60 * 60 * 1000);
@@ -46,7 +38,6 @@ function toInt(v: unknown): number | null {
   if (typeof v === "string") {
     // "¥1,500" 等の通貨記号・カンマを取り除いてから Number 化
     const stripped = v.replace(/[^\d.\-]/g, "");
-    // 数字が含まれていなければ Number("") = 0 になる罠を避ける
     if (stripped === "" || stripped === "-" || stripped === ".") return null;
     const n = Number(stripped);
     return Number.isFinite(n) ? Math.round(n) : null;
@@ -96,19 +87,20 @@ function validateItem(raw: unknown, idx: number): OcrItem {
     );
   }
 
-  let category = typeof r.category === "string" ? r.category : "other";
-  if (!VALID_CATEGORIES.has(category)) category = "other";
+  // category_hint は標準カテゴリ名と厳密に一致するか、null
+  const hintRaw = typeof r.category_hint === "string" ? r.category_hint.trim() : null;
+  const category_hint = hintRaw && VALID_CATEGORY_HINTS.has(hintRaw) ? hintRaw : null;
 
   return {
     raw_name,
     quantity: toNum(r.quantity),
     unit: asString(r.unit),
     total_price: total_price_int,
-    category,
+    category_hint,
   };
 }
 
-/** discounts[] の検証。 */
+/** discounts[] の検証 */
 function validateDiscounts(
   raw: unknown,
 ): { label: string; amount: number }[] {
@@ -128,14 +120,16 @@ function validateDiscounts(
 
 /** Gemini が返した JSON を OcrResult に検証・整形する。
  *  必須: items, total_amount, purchased_at（不足時は throw）
- *  任意: store_name, discounts, confidence */
+ *  任意: store_name, discounts, confidence, store_category_hint */
 export function validateOcrResult(raw: unknown): OcrResult {
   if (typeof raw !== "object" || raw === null) {
     throw new OcrValidationError("Response is not an object");
   }
   const r = raw as Record<string, unknown>;
 
-  const purchased_at = isYmd(r.purchased_at) ? (r.purchased_at as string) : todayInJst();
+  const purchased_at = isIsoDateLike(r.purchased_at)
+    ? (r.purchased_at as string)
+    : todayInJst();
 
   const total_amount = toInt(r.total_amount);
   if (total_amount === null) {
@@ -151,8 +145,12 @@ export function validateOcrResult(raw: unknown): OcrResult {
 
   let confidence = toNum(r.confidence);
   if (confidence === null) confidence = 0.5;
-  // 0..1 にクランプ
   confidence = Math.max(0, Math.min(1, confidence));
+
+  const storeHintRaw =
+    typeof r.store_category_hint === "string" ? r.store_category_hint.trim() : null;
+  const store_category_hint =
+    storeHintRaw && VALID_STORE_HINTS.has(storeHintRaw) ? storeHintRaw : null;
 
   return {
     store_name: asString(r.store_name),
@@ -161,5 +159,6 @@ export function validateOcrResult(raw: unknown): OcrResult {
     items,
     discounts,
     confidence,
+    store_category_hint,
   };
 }
