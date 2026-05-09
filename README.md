@@ -88,9 +88,9 @@ ReceiptLink/
 ## 技術スタック
 
 - **フロントエンド**: Next.js 15 (App Router) + React 19 + TypeScript + Tailwind CSS v4
-- **グラフ**: Recharts（**新規追加予定**）
+- **グラフ**: Recharts
 - **バックエンド**: Supabase（Postgres + Auth + Storage + Edge Functions）
-- **AI**: Gemini 3 Flash / Pro（OCR 用、フォールバック付き）
+- **AI**: Gemini 2.5 Flash / Pro（OCR 用、フォールバック付き）
 - **テスト**: Vitest + Playwright
 - **デプロイ**: Vercel + Supabase Cloud
 
@@ -127,12 +127,55 @@ cp supabase/functions/.env.sample supabase/functions/.env
 cd web && pnpm dev
 ```
 
-### B. 本番環境（Vercel + Supabase Cloud）— PR-7 で実施
+### B. 本番環境（Vercel + Supabase Cloud）
 
-1. 新規 Supabase プロジェクト作成（無料枠 / Tokyo）
-2. Supabase に Google OAuth プロバイダ設定
-3. `supabase db push` でマイグレーション適用
-4. Vercel に環境変数を設定してデプロイ
+#### B-1. Supabase Cloud セットアップ
+
+1. **新規プロジェクト作成**（https://supabase.com/dashboard）
+   - Region: Northeast Asia (Tokyo)
+   - Pricing Plan: Free（MVP 期は十分）
+2. **Google OAuth プロバイダ設定**
+   - Google Cloud Console で OAuth 2.0 クライアント ID 作成
+     - Authorized redirect URI: `https://<project-ref>.supabase.co/auth/v1/callback`
+   - Supabase Dashboard → Authentication → Providers → Google で Client ID/Secret を登録
+3. **マイグレーション適用**
+   ```sh
+   supabase login
+   supabase link --project-ref <project-ref>
+   supabase db push
+   ```
+4. **Edge Function デプロイ**
+   ```sh
+   supabase secrets set GEMINI_API_KEY=<your-key> --project-ref <project-ref>
+   supabase functions deploy extract-receipt --project-ref <project-ref>
+   ```
+5. **初期 admin ユーザー追加**
+   - Web から 1 度 Google ログインを試みて `auth.users` にレコードを生成
+   - Supabase SQL Editor で:
+     ```sql
+     insert into public.allowed_users (email, role, note)
+     values ('<your-email@gmail.com>', 'admin', 'Owner');
+     ```
+
+#### B-2. Vercel デプロイ
+
+1. **Vercel プロジェクト作成**（https://vercel.com/new）
+   - GitHub リポジトリ `hiderin3658/ReceiptLink` をインポート
+   - **Root Directory**: `web`（リポジトリ直下ではなく `/web` を指定）
+   - Build Command / Output Directory はデフォルトのままで OK
+2. **環境変数を設定**（Project Settings → Environment Variables）
+   ```
+   NEXT_PUBLIC_SUPABASE_URL       = https://<project-ref>.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY  = <anon key>
+   SUPABASE_SERVICE_ROLE_KEY      = <service_role key>   # 必ず Production / Preview の両方
+   NEXT_PUBLIC_APP_URL            = https://<your-vercel-domain>.vercel.app
+   ```
+3. **デプロイ実行 → 動作確認**
+   - 本番 URL で Google ログイン → ホワイトリスト判定 → ダッシュボード表示
+4. **Google OAuth に本番 URL を追加**
+   - Google Cloud Console → 認証情報 → OAuth クライアント ID
+     - Authorized redirect URIs に同じ Supabase callback URL（変更不要、Supabase 経由）
+     - Authorized JavaScript origins に Vercel ドメイン `https://<your-vercel-domain>.vercel.app` を追加
 
 ---
 
