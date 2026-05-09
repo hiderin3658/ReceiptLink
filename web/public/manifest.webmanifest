@@ -1,11 +1,11 @@
 {
-  "name": "OkazuLink",
-  "short_name": "OkazuLink",
-  "description": "一人暮らし女性向け食生活コーチ",
+  "name": "ReceiptLink",
+  "short_name": "ReceiptLink",
+  "description": "レシート写真を撮るだけで家計簿が完成するアプリ",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#ffffff",
+  "theme_color": "#0ea5e9",
   "orientation": "portrait",
   "lang": "ja",
   "icons": [
