@@ -24,11 +24,9 @@ import {
   parseJsonOutput,
 } from "../_shared/gemini.ts";
 import { buildReceiptOcrPrompt } from "../_shared/prompts.ts";
-import { logAiCall, getMonthlyCostUsd } from "../_shared/ai-log.ts";
-import { evaluateBudget, usdToJpy } from "../_shared/budget.ts";
+import { logAiCall } from "../_shared/ai-log.ts";
 import type {
   AiKind,
-  BudgetMode,
   EdgeError,
   EdgeErrorCode,
   OcrResult,
@@ -152,27 +150,9 @@ Deno.serve(async (req: Request) => {
   const mimeType = guessMimeType(blob, normalized);
   const base64 = await blobToBase64(blob);
 
-  // 5. 月次予算チェック（hard モードのみ実呼出をブロック）
+  // 5. 月次予算チェックは MVP 対象外（Phase 2 以降）。
+  //    必要になったら Phase 2 で _shared/budget.ts を新設して再導入する。
   const serviceClient = createServiceClient();
-  const monthlyUsd = await getMonthlyCostUsd(serviceClient);
-  const usdJpyRate = Number(getEnv("USD_JPY_RATE") ?? "150");
-  const monthlyJpy = usdToJpy(monthlyUsd, usdJpyRate);
-  const budgetJpy = Number(getEnv("MONTHLY_AI_BUDGET_JPY") ?? "1000");
-  const budgetMode = (getEnv("AI_BUDGET_MODE") ?? "soft") as BudgetMode;
-  const budgetStatus = evaluateBudget(monthlyJpy, budgetJpy, budgetMode);
-  if (!budgetStatus.allow) {
-    const err: EdgeError = {
-      error: "Monthly AI budget exceeded",
-      code: "BUDGET_EXCEEDED",
-      detail: `${budgetStatus.monthly_total_jpy} JPY / ${budgetStatus.budget_jpy} JPY (mode=hard)`,
-    };
-    return jsonResponse(err, { status: 429 });
-  }
-  if (budgetStatus.exceeded) {
-    console.warn(
-      `[extract-receipt] budget exceeded but mode=soft, continuing. ${budgetStatus.monthly_total_jpy}/${budgetStatus.budget_jpy} JPY`,
-    );
-  }
 
   // 6. Gemini 呼び出し（primary → fallback）
   const apiKey = mustEnv("GEMINI_API_KEY");
