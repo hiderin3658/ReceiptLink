@@ -6,14 +6,15 @@
 -- 本ファイルで以下を一括作成:
 --   1. 拡張 (pgcrypto)
 --   2. enum 定義 (user_role, expense_source, ai_kind)
---   3. ヘルパー関数 (current_email, is_admin, set_updated_at)
---   4. allowed_users + RLS                       — メールホワイトリスト
---   5. user_profiles + RLS                       — ユーザー追加情報
---   6. expense_categories + RLS + 標準カテゴリ シード — カテゴリマスタ
---   7. recurring_expenses + RLS                  — 固定費テンプレート
---   8. expense_records + RLS                     — 支出 1 件
---   9. expense_items + RLS                       — 支出明細
---  10. ai_advice_logs + RLS                      — AI 呼び出しログ
+--   3. allowed_users テーブル本体（is_admin() の参照先のため先に作成）
+--   4. ヘルパー関数 (current_email, is_admin, set_updated_at)
+--   5. allowed_users RLS ポリシー
+--   6. user_profiles + RLS                       — ユーザー追加情報
+--   7. expense_categories + RLS + 標準カテゴリ シード — カテゴリマスタ
+--   8. recurring_expenses + RLS                  — 固定費テンプレート
+--   9. expense_records + RLS                     — 支出 1 件
+--  10. expense_items + RLS                       — 支出明細
+--  11. ai_advice_logs + RLS                      — AI 呼び出しログ
 --
 -- 注意:
 --   - OkazuLink 由来の旧テーブル群（shopping_records / shopping_items / recipes /
@@ -34,7 +35,21 @@ create type public.expense_source as enum ('receipt', 'manual', 'recurring');
 create type public.ai_kind as enum ('ocr', 'ocr_fallback');
 
 -- =====================================================================
--- 3. ヘルパー関数
+-- 3. allowed_users テーブル本体（is_admin() より先に定義する必要あり）
+-- =====================================================================
+create table public.allowed_users (
+  id uuid primary key default gen_random_uuid(),
+  email text not null unique check (email = lower(email)),
+  role public.user_role not null default 'user',
+  note text,
+  created_at timestamptz not null default now()
+);
+
+alter table public.allowed_users enable row level security;
+
+-- =====================================================================
+-- 4. ヘルパー関数
+--    is_admin() は public.allowed_users を参照するため、テーブル作成後に定義
 -- =====================================================================
 
 -- 現在の認証ユーザーの email を返す（lower 済み想定）
@@ -74,17 +89,8 @@ end;
 $$;
 
 -- =====================================================================
--- 4. allowed_users: ログイン許可 email + ロール
+-- 5. allowed_users RLS ポリシー
 -- =====================================================================
-create table public.allowed_users (
-  id uuid primary key default gen_random_uuid(),
-  email text not null unique check (email = lower(email)),
-  role public.user_role not null default 'user',
-  note text,
-  created_at timestamptz not null default now()
-);
-
-alter table public.allowed_users enable row level security;
 
 -- 自分の行だけ SELECT 可
 create policy "allowed_users: self select"
@@ -116,7 +122,7 @@ create policy "allowed_users: admin delete"
   using (public.is_admin());
 
 -- =====================================================================
--- 5. user_profiles: 表示名等のユーザー追加情報
+-- 6. user_profiles: 表示名等のユーザー追加情報
 -- =====================================================================
 create table public.user_profiles (
   user_id uuid primary key references auth.users(id) on delete cascade,
@@ -149,7 +155,7 @@ create trigger user_profiles_set_updated_at
   for each row execute function public.set_updated_at();
 
 -- =====================================================================
--- 6. expense_categories: カテゴリマスタ（標準 + ユーザー追加）
+-- 7. expense_categories: カテゴリマスタ（標準 + ユーザー追加）
 --    user_id IS NULL なら標準カテゴリ（全員参照可、admin のみ編集）
 --    user_id IS NOT NULL なら所有ユーザーのカスタムカテゴリ
 -- =====================================================================
@@ -260,7 +266,7 @@ insert into public.expense_categories (user_id, name, sort_order, is_default) va
 on conflict do nothing;
 
 -- =====================================================================
--- 7. recurring_expenses: 固定費テンプレート
+-- 8. recurring_expenses: 固定費テンプレート
 --    day_of_month は 1-31 を許容。当月に該当日が存在しない場合
 --    （例: 2 月の 31 日）は recurring.ts 側で月末日に丸める。
 -- =====================================================================
@@ -296,7 +302,7 @@ create trigger recurring_expenses_set_updated_at
   for each row execute function public.set_updated_at();
 
 -- =====================================================================
--- 8. expense_records: 支出 1 件（レシート単位 or 手入力 1 回 or 固定費 1 回）
+-- 9. expense_records: 支出 1 件（レシート単位 or 手入力 1 回 or 固定費 1 回）
 -- =====================================================================
 create table public.expense_records (
   id uuid primary key default gen_random_uuid(),
@@ -324,7 +330,7 @@ create policy "expense_records: self all"
   with check (user_id = auth.uid());
 
 -- =====================================================================
--- 9. expense_items: 支出の品目内訳
+-- 10. expense_items: 支出の品目内訳
 -- =====================================================================
 create table public.expense_items (
   id uuid primary key default gen_random_uuid(),
@@ -363,7 +369,7 @@ create policy "expense_items: via record"
   );
 
 -- =====================================================================
--- 10. ai_advice_logs: AI 呼び出しログ（OCR）
+-- 11. ai_advice_logs: AI 呼び出しログ（OCR）
 -- =====================================================================
 create table public.ai_advice_logs (
   id uuid primary key default gen_random_uuid(),
