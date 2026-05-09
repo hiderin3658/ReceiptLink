@@ -10,7 +10,7 @@ export function DeleteExpenseButton({ id }: { id: string }) {
   const router = useRouter();
 
   function handleClick() {
-    if (!confirm("この買物記録を削除しますか？（明細も同時に削除されます）")) {
+    if (!confirm("この支出記録を削除しますか？（明細も同時に削除されます）")) {
       return;
     }
     startTransition(async () => {

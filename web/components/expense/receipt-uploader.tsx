@@ -6,7 +6,7 @@
 // フロー:
 //   1. ユーザーが画像を選択（モバイルでは camera capture も可）
 //   2. プレビュー表示
-//   3. 「食材を抽出」ボタンクリック
+//   3. 「品目を抽出」ボタンクリック
 //   4. Supabase Storage `receipts/<userId>/<uuid>.<ext>` へアップロード
 //   5. Edge Function `extract-receipt` を invoke
 //   6. 成功時 onResult(ocr, imagePath) で親に通知
@@ -117,7 +117,7 @@ export function ReceiptUploader({ onResult }: Props) {
         <div>
           <h2 className="text-sm font-semibold">レシート画像から自動入力</h2>
           <p className="text-xs text-[var(--color-muted-foreground)]">
-            撮影またはファイル選択 → AI で食材リスト・店舗・合計を抽出します
+            撮影またはファイル選択 → AI で品目リスト・店舗・合計を抽出します
           </p>
         </div>
       </div>
@@ -159,8 +159,8 @@ export function ReceiptUploader({ onResult }: Props) {
               {status === "uploading"
                 ? "アップロード中..."
                 : status === "extracting"
-                  ? "食材を抽出中..."
-                  : "食材を抽出"}
+                  ? "品目を抽出中..."
+                  : "品目を抽出"}
             </button>
             <button
               type="button"
@@ -205,8 +205,6 @@ function toErrorMessage(err: unknown): string {
   switch (code) {
     case "AUTH_NOT_ALLOWED":
       return "このアカウントは利用許可されていません。";
-    case "BUDGET_EXCEEDED":
-      return "今月の AI 利用上限に達しました。管理者に連絡してください。";
     case "AI_TIMEOUT":
       return "AI の応答がタイムアウトしました。少し時間をおいて再度お試しください。";
     case "AI_BLOCKED":
