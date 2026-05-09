@@ -4,7 +4,8 @@
 > 関連: [requirements.md](./requirements.md) / [design.md](./design.md)
 
 - 作成日: 2026-05-10
-- 対象バージョン: PR #10 マージ時点（main `ad3fef3`）
+- 実行日: 2026-05-10
+- 対象バージョン: PR #11 マージ時点（main `6b2b7d3`）
 - テスト方式: **手動 + Claude in Chrome ブラウザ自動操作**
 - 環境: ローカル開発環境（`localhost:3000`）+ Supabase Cloud (`zqobhmhcimwqnwmwjrgt`)
 
@@ -381,22 +382,142 @@
 
 ---
 
-## 15. テスト結果サマリ（実行時に埋める）
+## 15. テスト結果サマリ（2026-05-10 実行）
 
-| Section | 件数 | ✅ | ❌ | ⏸ | ➖ |
-|---|---:|---:|---:|---:|---:|
-| 4. 認証 | 4 | - | - | - | 4 |
-| 5. 支出登録 | 6 | - | - | - | 6 |
-| 6. 履歴系 | 5 | - | - | - | 5 |
-| 7. ダッシュボード | 4 | - | - | - | 4 |
-| 8. レポート | 4 | - | - | - | 4 |
-| 9. プロフィール | 3 | - | - | - | 3 |
-| 10. カテゴリ | 6 | - | - | - | 6 |
-| 11. 固定費 | 6 | - | - | - | 6 |
-| 12. CSV | 2 | - | - | - | 2 |
-| 13. ホワイトリスト | 4 | - | - | - | 4 |
-| 14. ナビゲーション | 2 | - | - | - | 2 |
-| **合計** | **46** | **0** | **0** | **0** | **46** |
+### 集計
+
+| Section | 件数 | ✅ | ⚠ | ❌ | ⏸ | ➖ |
+|---|---:|---:|---:|---:|---:|---:|
+| 4. 認証 | 4 | 1 | 0 | 0 | 0 | 3 ⚠* |
+| 5. 支出登録 (5-a + 5-c) | 6 | 3 | 1 | 0 | 2 | 0 |
+| 6. 履歴系 | 5 | 3 | 1 | 1 | 0 | 0 |
+| 7. ダッシュボード | 4 | 3 | 0 | 1 | 0 | 0 |
+| 8. レポート | 4 | 3 | 1 | 0 | 0 | 0 |
+| 9. プロフィール | 3 | 2 | 1 | 0 | 0 | 0 |
+| 10. カテゴリ | 6 | 6 | 0 | 0 | 0 | 0 |
+| 11. 固定費 | 6 | 4 | 0 | 0 | 2 | 0 |
+| 12. CSV | 2 | 2 | 0 | 0 | 0 | 0 |
+| 13. ホワイトリスト | 4 | 4 | 0 | 0 | 0 | 0 |
+| 14. ナビゲーション | 2 | 0 | 0 | 0 | 0 | 2 |
+| **合計** | **46** | **31** | **4** | **2** | **4** | **5** |
+
+*Section 4 の TC-AUTH-01/02/03 は Google OAuth 対話操作が必要なため未実施。TC-AUTH-04 のみ ✅。
+
+### 各テストケース詳細
+
+#### Section 4. 認証
+| TC | 結果 | 備考 |
+|---|---|---|
+| TC-AUTH-01 | ➖ | 未実施（Chrome のセッション操作必要） |
+| TC-AUTH-02 | ➖ | 未実施（Google OAuth 対話） |
+| TC-AUTH-03 | ➖ | 未実施（別アカウント必要） |
+| TC-AUTH-04 | ✅ | 全 5 ルート (dashboard / expense / expense/new / reports / settings) 表示成功 |
+
+#### Section 5-a 手入力 + 5-c OCR
+| TC | 結果 | 備考 |
+|---|---|---|
+| TC-INPUT-MAN-01 | ✅ | テスト店舗A / ¥500 / 食費 登録成功 |
+| TC-INPUT-MAN-02 | ✅ | 3 品目で合計 ¥1,250 (= 800+350+120-20) 自動計算 |
+| TC-INPUT-MAN-03 | ✅ | 品名空白で HTML5 required 阻止「このフィールドを入力してください」 |
+| TC-INPUT-MAN-04 | ⚠ | 値引 200 > 金額 100 で合計 ¥-100 → DB CHECK 阻止「保存に失敗しました」（汎用）。**UX 改善余地: 原因が伝わらない** |
+| TC-INPUT-OCR-01 | ⏸ | **Edge Function `extract-receipt` 未デプロイ**（"Failed to send a request to the Edge Function"）→ 依頼者環境でデプロイ必要 |
+| TC-INPUT-OCR-02 | ⏸ | 同上 |
+
+#### Section 6. 履歴・詳細・編集・削除
+| TC | 結果 | 備考 |
+|---|---|---|
+| TC-LIST-01 | ✅ | 月別合計 ¥1,750 / 最近の支出 2 件 / CSV リンク表示 |
+| TC-DETAIL-01 | ✅ | 詳細表示でカテゴリ名・ソース・金額正しい |
+| TC-EDIT-01 | ⚠ | **🐛 Bug**: 編集モードで `purchased_at` が空になる (timestamptz と `<input type="date">` の YYYY-MM-DD 形式不整合) → HTML5 required で submit 阻止。再入力すれば成功 |
+| TC-EDIT-02 | ❌ | **🐛 Bug**: 明細追加しても `total_amount` が更新されない (record.total_amount > 0 なら保持仕様だが、編集時の挙動として不適切)。明細件数は増える、合計表示も明細レベルでは正しいが、ヘッダの合計と DB の records.total_amount は元値のまま |
+| TC-DELETE-01 | ✅ | テスト医療品を確認ダイアログ経由で削除 → /expense にリダイレクト・一覧から消失 |
+
+#### Section 7. ダッシュボード
+| TC | 結果 | 備考 |
+|---|---|---|
+| TC-DASH-01 | ✅ | 今月合計 ¥1,750 / 経過 10 日 / 31 日 / ペース予想 ¥5,425 (= 1750/10*31) 正確 |
+| TC-DASH-02 | ✅ | 円グラフ + カテゴリ別リスト（食費 ¥1,700 / 日用品 ¥350）表示 |
+| TC-DASH-03 | ✅ | 当月支出 0 で「今月の支出がまだありません」表示、合計 ¥0 |
+| TC-DASH-04 | ❌ | **🐛 Bug (Critical)**: `recurring-actions.ts` で `"use server"` ファイルから object (`initialGeneratePendingState`) を export しているため Server Action ロード自体が 500 → **固定費自動計上機能が完全に動作しない** |
+
+#### Section 8. レポート
+| TC | 結果 | 備考 |
+|---|---|---|
+| TC-REPORT-01 | ✅ | 当月 ¥1,750 表示、前月比は前月データ無しのため null（表示しない仕様） |
+| TC-REPORT-02 | ⚠ | URL 直入力では 6 / 12 ヶ月切替動作 ✅、**「12ヶ月」「6ヶ月」リンククリックでは URL が変わらず遷移しない** (typedRoutes Link の挙動差) |
+| TC-REPORT-03 | ✅ | 「前月」リンクで `?ym=2026-04&months=6` に遷移 |
+| TC-REPORT-04 | ✅ | 当月時に「次月」リンクが SPAN (薄表示) でクリック不可 |
+
+#### Section 9. プロフィール
+| TC | 結果 | 備考 |
+|---|---|---|
+| TC-PROF-01 | ✅ | プロフィール初期表示確認（OAuth callback で full_name が初期登録されていた） |
+| TC-PROF-02 | ✅ | 表示名「ヒデリン」/ 生年「1990」保存成功「✓ 更新しました」 |
+| TC-PROF-03 | ⚠ | 生年 1899 で HTML5 `min=1900` 阻止 → DB は保護されるが、**エラー表示が出ず「保存ボタンを押しても何も起きない」UX** |
+
+#### Section 10. カテゴリ管理
+| TC | 結果 | 備考 |
+|---|---|---|
+| TC-CAT-01 | ✅ | 標準 6 種 pill 表示、編集ボタン無し |
+| TC-CAT-02 | ✅ | 「医療費」追加成功 |
+| TC-CAT-03 | ✅ | 「医療費」→「医療・薬」に編集成功 |
+| TC-CAT-04 | ✅ | 「食費」追加で「同じ名前のカテゴリが既に存在します」エラー（DB トリガー機能） |
+| TC-CAT-05 | ✅ | 使用中の「医療・薬」削除試行で「このカテゴリを使用している支出があるため削除できません」エラー（FK restrict 機能） |
+| TC-CAT-06 | ✅ | 「テスト用」追加 → 削除（confirm override）→ 一覧から消失。最終的に「医療・薬」も支出削除後に削除可能になることを確認 |
+
+#### Section 11. 固定費管理
+| TC | 結果 | 備考 |
+|---|---|---|
+| TC-REC-01 | ✅ | 「家賃テスト」/ 光熱費 / 1日 / ¥80,000 追加成功 |
+| TC-REC-02 | ✅ | 金額 ¥80,000 → ¥85,000 編集成功 |
+| TC-REC-03 | ✅ | 「計上を有効化」OFF で「停止中」バッジ表示確認 |
+| TC-REC-04 | ⏸ | TC-DASH-04 が動かないため過去レコード生成不可、過去レコード保持確認は保留 |
+| TC-REC-05 | ✅ | day_of_month 32 で HTML5 `max=31` 阻止 (`validity.valid=false`) |
+| TC-REC-06 | ⏸ | 月末丸めの実環境テストは困難。`recurring.test.ts` ユニットテストで担保済み |
+
+#### Section 12. CSV エクスポート
+| TC | 結果 | 備考 |
+|---|---|---|
+| TC-CSV-01 | ✅ | 14 列ヘッダ + 全 6 行取得成功。⚠ 日付列が ISO 8601 timestamptz 表示で Excel 表示が見にくい (`2026-05-10T00:00:00+00:00`) |
+| TC-CSV-02 | ✅ | 履歴 0 件で `/expense` の CSV リンク非表示確認 |
+
+#### Section 13. ホワイトリスト管理 (admin only)
+| TC | 結果 | 備考 |
+|---|---|---|
+| TC-AUTH-ADM-01 | ✅ | admin 表示で「ホワイトリスト管理」セクション表示 |
+| TC-AUTH-ADM-02 | ✅ | `test-user@example.com` / `test memo` 追加成功 |
+| TC-AUTH-ADM-03 | ✅ | 自分の行: select disabled / delete disabled 確認 |
+| TC-AUTH-ADM-04 | ✅ | `test-user@example.com` 削除成功（confirm override） |
+
+---
+
+## 17. 検出バグまとめ（重要度順）
+
+### 🔴 Critical
+- **B-DASH-04**: `web/lib/expense/recurring-actions.ts` で `"use server"` ファイルから object (`initialGeneratePendingState`) を export しているため、Server Action 読込時に Next.js が 500 を返し、**固定費自動計上機能（generatePendingExpensesAction）が一切動作しない**。`export const initialGeneratePendingState` を削除し定数を内部に閉じ込めるか、別ファイルへ分離する必要あり。
+
+### 🟠 High
+- **B-EDIT-01**: 編集モードで `record.purchased_at` (timestamptz, ISO 8601) を `<input type="date">` の `value` に直接渡すため、ブラウザは無効値として扱い空表示 → HTML5 required で submit 阻止。ユーザーは原因が分からないため操作不能に陥る。`record.purchased_at.slice(0, 10)` で YYYY-MM-DD に切り詰めて渡す対処が必要。
+- **B-EDIT-02**: 編集時に `record.total_amount` (既存値、例: 500) が initial として `totalAmount` state に設定され、明細追加 / 編集後も「未入力なら明細から自動」が発動しない。結果として ヘッダの合計と DB の `expense_records.total_amount` が明細合計と乖離する。`updateExpenseRecord` で常に明細から再計算する、または編集 UI で「合計を自動計算」モードを追加する。
+
+### 🟡 Medium
+- **B-PROF-03**: 生年 input で `min=1900` を超えた値を入力 → HTML5 で submit 阻止されるが、**エラーメッセージが画面に表示されない**ため「保存ボタンを押しても何も起きない」UX。ユーザーが気付きにくい。
+- **B-INPUT-MAN-04**: 値引 > 金額の組み合わせで合計が負になる場合、DB CHECK で阻止されるが「保存に失敗しました（汎用）」しか表示されない。事前にクライアント側でバリデーションする、または DB エラーの内容を判別して具体的なメッセージを返す。
+- **B-REPORT-02**: `/reports` の「6ヶ月」「12ヶ月」切替リンクをクリックしても URL が変わらず描画も切り替わらない。前月リンクは動く。`typedRoutes` の object href Link 挙動差の可能性。
+
+### 🟢 Low
+- **B-CSV-01**: CSV の「日付」列が ISO 8601 timestamptz そのまま (`2026-05-10T00:00:00+00:00`)。Excel 表示で見にくい。`formatDate` ヘルパーで `YYYY-MM-DD` または日本語形式に整形して出力。
+
+### ⏸ 環境依存（テスト不能）
+- **TC-INPUT-OCR-01/02**: Edge Function `extract-receipt` が Cloud に未デプロイ。`supabase functions deploy extract-receipt --project-ref zqobhmhcimwqnwmwjrgt` を実行すれば実施可能。
+
+---
+
+## 18. テスト中に発見した補助知見（メモリ化推奨）
+
+- **Claude in Chrome の `form_input` ツールは React の `onChange` を発火させない**ため、controlled component の state は更新されない。`computer.left_click` (チェックボックス・select) や `computer.type` (テキスト入力) を使うと React onChange が動く。
+- **JavaScript `dispatchEvent('change')` は React onChange を発火させる**ため、ファイル入力 (`input.files = dt.files`) は javascript_tool で代替可能（Chrome 拡張の file_upload は `<input class="hidden">` に対して `Not allowed` を返すケースあり）。
+- **`pnpm build` 後に `pnpm dev` の起動中サーバーがあると `.next` キャッシュ衝突で 500**。`rm -rf .next` してから `pnpm dev` で復旧。
 
 ---
 
