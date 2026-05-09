@@ -22,9 +22,9 @@ function LoginContent() {
     <main className="flex min-h-svh flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm space-y-8">
         <div className="space-y-2 text-center">
-          <h1 className="text-3xl font-bold tracking-tight">OkazuLink</h1>
+          <h1 className="text-3xl font-bold tracking-tight">ReceiptLink</h1>
           <p className="text-sm text-[var(--color-muted-foreground)]">
-            あなたの食生活をサポートします
+            レシート写真を撮るだけで家計簿が完成するアプリ
           </p>
         </div>
 

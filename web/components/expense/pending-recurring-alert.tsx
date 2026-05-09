@@ -5,6 +5,7 @@
 // 設計書: docs/design.md §7
 
 import { useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertCircle, Repeat, Loader2 } from "lucide-react";
 import { generatePendingExpensesAction } from "@/lib/expense/recurring-actions";
@@ -73,8 +74,14 @@ export function NoRecurringHint() {
   return (
     <section className="rounded-lg border border-dashed border-[var(--color-border)] p-3 text-xs text-[var(--color-muted-foreground)]">
       <AlertCircle size={12} className="mr-1 inline" aria-hidden />
-      家賃・サブスク・光熱費の定額部分などは「設定 → 固定費」で登録すると、
-      毎月ボタン 1 つで計上できます。（設定画面は PR-6 で実装予定）
+      家賃・サブスク・光熱費の定額部分などは{" "}
+      <Link
+        href="/settings"
+        className="font-medium text-[var(--color-primary)] underline-offset-2 hover:underline"
+      >
+        設定 → 固定費管理
+      </Link>{" "}
+      で登録すると、毎月ボタン 1 つで計上できます。
     </section>
   );
 }
