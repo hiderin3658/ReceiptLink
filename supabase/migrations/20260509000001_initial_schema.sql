@@ -159,11 +159,45 @@ create table public.expense_categories (
   name text not null,
   sort_order int not null default 100,
   is_default boolean not null default false,
-  created_at timestamptz not null default now(),
-  unique (user_id, name)
+  created_at timestamptz not null default now()
 );
 
 create index expense_categories_user_idx on public.expense_categories (user_id, sort_order);
+
+-- 一意性制約（部分一意インデックス）:
+--   - 標準カテゴリ（user_id IS NULL）間で大文字小文字無視の重複を禁止
+--   - ユーザーごとのカスタムカテゴリ間で大文字小文字無視の重複を禁止
+--   - PostgreSQL の通常 UNIQUE 制約は NULL を別物扱いするため、user_id NULL の
+--     重複阻止のために部分インデックスを使う
+create unique index expense_categories_default_unique_name
+  on public.expense_categories (lower(name))
+  where user_id is null;
+
+create unique index expense_categories_user_unique_name
+  on public.expense_categories (user_id, lower(name))
+  where user_id is not null;
+
+-- 標準カテゴリと同名のユーザーカテゴリ作成を阻止するトリガー
+-- （部分インデックス単独では「user_id 別 + NULL 別」で重複を許してしまうため）
+create or replace function public.check_category_name_collision()
+returns trigger language plpgsql as $$
+begin
+  if new.user_id is not null then
+    if exists (
+      select 1 from public.expense_categories
+      where user_id is null and lower(name) = lower(new.name)
+    ) then
+      raise exception 'カテゴリ名 "%" は標準カテゴリと重複します', new.name
+        using errcode = '23505';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger expense_categories_check_collision
+  before insert or update on public.expense_categories
+  for each row execute function public.check_category_name_collision();
 
 alter table public.expense_categories enable row level security;
 
@@ -197,12 +231,23 @@ create policy "expense_categories: delete own"
   to authenticated
   using (user_id = auth.uid() and is_default = false);
 
--- 標準カテゴリは admin のみ編集可
+-- 標準カテゴリの管理は admin のみ可（INSERT / UPDATE / DELETE）
+-- DELETE は安全弁として is_default = false に限る（誤削除防止）
+create policy "expense_categories: admin insert default"
+  on public.expense_categories for insert
+  to authenticated
+  with check (public.is_admin() and user_id is null);
+
 create policy "expense_categories: admin update default"
   on public.expense_categories for update
   to authenticated
   using (public.is_admin() and user_id is null)
   with check (public.is_admin() and user_id is null);
+
+create policy "expense_categories: admin delete default"
+  on public.expense_categories for delete
+  to authenticated
+  using (public.is_admin() and user_id is null and is_default = false);
 
 -- 標準カテゴリ シード（design.md §4.3）
 insert into public.expense_categories (user_id, name, sort_order, is_default) values
@@ -216,7 +261,8 @@ on conflict do nothing;
 
 -- =====================================================================
 -- 7. recurring_expenses: 固定費テンプレート
---    day_of_month は 1-28 に制限（月末判定回避: design.md D-09）
+--    day_of_month は 1-31 を許容。当月に該当日が存在しない場合
+--    （例: 2 月の 31 日）は recurring.ts 側で月末日に丸める。
 -- =====================================================================
 create table public.recurring_expenses (
   id uuid primary key default gen_random_uuid(),
@@ -224,13 +270,16 @@ create table public.recurring_expenses (
   name text not null,
   category_id uuid not null references public.expense_categories(id) on delete restrict,
   amount int not null check (amount >= 0),
-  day_of_month int not null check (day_of_month between 1 and 28),
+  day_of_month int not null check (day_of_month between 1 and 31),
   active boolean not null default true,
   last_generated_month date,  -- 最後に生成した月の 1 日（YYYY-MM-01）
   note text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+comment on column public.recurring_expenses.day_of_month is
+  '月次計上日 (1-31)。当月に存在しない日（例: 2 月の 31 日）はアプリ側 (lib/expense/recurring.ts) で月末日に丸める。';
 
 create index recurring_expenses_user_idx on public.recurring_expenses (user_id, active);
 
@@ -252,7 +301,8 @@ create trigger recurring_expenses_set_updated_at
 create table public.expense_records (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
-  purchased_at date not null,
+  -- timestamptz: OCR が時刻まで返すため（design.md §6.3）。手入力時は 00:00:00 で保存。
+  purchased_at timestamptz not null,
   store_name text,
   total_amount int not null default 0 check (total_amount >= 0),
   note text,

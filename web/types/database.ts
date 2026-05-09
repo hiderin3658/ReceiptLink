@@ -137,7 +137,8 @@ export interface RecurringExpense {
 export interface ExpenseRecord {
   id: string;
   user_id: string;
-  purchased_at: string; // YYYY-MM-DD
+  /** ISO 8601 形式の timestamptz。OCR は時刻込みで返す。手入力時は 00:00:00 で保存。 */
+  purchased_at: string;
   store_name: string | null;
   total_amount: number;
   note: string | null;

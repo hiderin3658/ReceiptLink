@@ -198,7 +198,7 @@ create table public.recurring_expenses (
   name text not null,                    -- 例: 家賃, Netflix, 電気代
   category_id uuid not null references public.expense_categories(id) on delete restrict,
   amount int not null,
-  day_of_month int not null check (day_of_month between 1 and 28),  -- 月次計上日
+  day_of_month int not null check (day_of_month between 1 and 31),  -- 月次計上日（当月に該当日が無ければ月末扱い）
   active boolean not null default true,
   last_generated_month date,             -- 最後に生成した月の 1 日（重複防止）
   note text,
@@ -207,7 +207,7 @@ create table public.recurring_expenses (
 );
 ```
 
-> **設計判断**: `day_of_month` を 1〜28 に制限することで、月末判定の複雑さを回避。29 日以降の固定費は実用上稀なため許容範囲。
+> **設計判断**: `day_of_month` は 1〜31 を許容。当月に該当日が存在しない場合（例: 2 月の 31 日、4 月の 31 日）は `lib/expense/recurring.ts` 側で **月末日に丸める**。月末締めの家賃・カード引き落とし等にも対応するため。
 
 ### 4.4 マイグレーション戦略
 
@@ -470,7 +470,7 @@ OkazuLink から流用したテスト:
 | D-06 | ホワイトリスト方式を維持（OkazuLink 流用） | 不特定多数のサインアップを防止 |
 | D-07 | グラフは Recharts のみ追加（他のチャートライブラリは選ばない） | 依存最小化、円・棒の両方をカバー |
 | D-08 | OCR でカテゴリヒントも返してもらう（追加プロンプト） | 後段の手動修正コストを下げる |
-| D-09 | `day_of_month` は 1〜28 に制限 | 月末日変動の複雑さ回避 |
+| D-09 | `day_of_month` は 1〜31 を許容、当月に存在しない日はアプリ層で月末丸め | 月末締めの固定費（家賃・カード）に対応するため |
 | D-10 | middleware を使わずサーバコンポーネントでガード | Edge Runtime 互換性問題回避（OkazuLink から継承） |
 
 ---
