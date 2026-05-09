@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  aggregateMonthlySummary,
-  dedupeIngredientNames,
-} from "./aggregations";
+import { aggregateMonthlySummary } from "./aggregations";
 
 describe("aggregateMonthlySummary", () => {
   it("空配列は空配列", () => {
@@ -44,42 +41,3 @@ describe("aggregateMonthlySummary", () => {
   });
 });
 
-describe("dedupeIngredientNames", () => {
-  it("display_name が優先される", () => {
-    const out = dedupeIngredientNames(
-      [
-        { raw_name: "ぶたバラ", display_name: "豚バラ" },
-        { raw_name: "豚バラ", display_name: null },
-      ],
-      10,
-    );
-    expect(out).toEqual(["豚バラ"]);
-  });
-
-  it("limit を超えない", () => {
-    const rows = Array.from({ length: 50 }, (_, i) => ({
-      raw_name: `食材${i}`,
-      display_name: null,
-    }));
-    const out = dedupeIngredientNames(rows, 5);
-    expect(out).toHaveLength(5);
-    expect(out[0]).toBe("食材0");
-    expect(out[4]).toBe("食材4");
-  });
-
-  it("入力順を保つ（新しい順 = 入力順）", () => {
-    const out = dedupeIngredientNames(
-      [
-        { raw_name: "C", display_name: null },
-        { raw_name: "B", display_name: null },
-        { raw_name: "A", display_name: null },
-      ],
-      10,
-    );
-    expect(out).toEqual(["C", "B", "A"]);
-  });
-
-  it("空入力は空配列を返す", () => {
-    expect(dedupeIngredientNames([], 10)).toEqual([]);
-  });
-});

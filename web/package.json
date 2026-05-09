@@ -1,5 +1,5 @@
 {
-  "name": "okazu-link-web",
+  "name": "receipt-link-web",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -12,8 +12,6 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "seed:foods": "tsx scripts/seed-foods.ts",
-    "backfill:food-ids": "tsx scripts/backfill-food-ids.ts",
     "gen:receipts": "tsx scripts/mock-receipts/generate.ts"
   },
   "dependencies": {

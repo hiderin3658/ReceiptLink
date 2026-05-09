@@ -2,14 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Receipt, ChefHat, LineChart, Settings } from "lucide-react";
+import { Home, Receipt, Plus, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "ホーム", icon: Home },
-  { href: "/shopping", label: "買物", icon: Receipt },
-  { href: "/recipes", label: "レシピ", icon: ChefHat },
-  { href: "/weight", label: "記録", icon: LineChart },
+  { href: "/shopping", label: "履歴", icon: Receipt },
+  { href: "/shopping/new", label: "追加", icon: Plus },
   { href: "/settings", label: "設定", icon: Settings },
 ] as const;
 

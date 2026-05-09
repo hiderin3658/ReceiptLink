@@ -10,7 +10,6 @@ import type { ShoppingRecordWithItems } from "@/types/database";
 const baseItem = {
   id: "i1",
   shopping_record_id: "r1",
-  food_id: null,
   display_name: null,
   unit_price: null,
   created_at: "2026-04-29T00:00:00Z",
