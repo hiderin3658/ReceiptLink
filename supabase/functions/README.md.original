@@ -1,0 +1,292 @@
+# Supabase Edge Functions
+
+OkazuLink の AI 連携（OCR / レシピ生成 / 栄養アドバイス）はすべて Supabase Edge Functions
+で実装する。クライアント (Next.js) は API キーを持たず、Edge Function を経由して
+Gemini API を呼び出す。
+
+設計書 §9 を参照。
+
+---
+
+## ディレクトリ構成
+
+```
+supabase/functions/
+├─ _shared/                    共通ロジック（複数 Function から import）
+│  ├─ auth.ts                  JWT 検証 + allowed_users 確認
+│  ├─ ai-log.ts                ai_advice_logs への記録 + 月次コスト集計
+│  ├─ budget.ts                コスト計算と予算判定（純粋関数 / vitest 対応）
+│  ├─ cors.ts                  CORS ヘッダ
+│  ├─ env.ts                   Deno/Node 両対応の環境変数アクセス
+│  ├─ gemini.ts                Gemini API クライアント（fetch ベース）
+│  ├─ hash.ts                  SHA-256 ハッシュ（プロンプトキャッシュキー用）
+│  ├─ prompts.ts               プロンプトテンプレート（純粋関数 / vitest 対応）
+│  ├─ sanitize.ts              ai_advice_logs 用 payload マスキング
+│  ├─ types.ts                 共通型
+│  └─ *.test.ts                vitest からも実行される単体テスト
+├─ hello/
+│  └─ index.ts                 疎通確認用 Function（PR-B のスモークテスト）
+├─ extract-receipt/
+│  ├─ index.ts                 レシート OCR Function（Gemini Flash + Pro フォールバック）
+│  ├─ validate.ts              Gemini 出力 JSON の検証・整形（vitest 対応）
+│  └─ validate.test.ts
+├─ suggest-recipes/
+│  ├─ index.ts                 レシピ提案 Function（プロンプトハッシュキャッシュ）
+│  ├─ validate.ts              RecipeSuggestion[] の検証・整形（vitest 対応）
+│  └─ validate.test.ts
+├─ advise-nutrition/
+│  ├─ index.ts                 月次栄養アドバイス Function（Gemini 3 Pro）
+│  ├─ validate.ts              NutritionAdvice の検証・整形（vitest 対応）
+│  └─ validate.test.ts
+├─ deno.json                   Deno 設定
+├─ import_map.json             bare specifier (npm:...) のマッピング
+├─ .env.sample                 ローカル開発用環境変数テンプレ
+└─ README.md                   このファイル
+```
+
+`_shared/auth.ts` と `_shared/ai-log.ts` は Supabase JS SDK を使うため Deno 上でのみ
+実行を想定（vitest 対象外）。それ以外の `_shared/*.ts` は純粋ロジックのため、
+`web/` から `pnpm test` を実行すると一緒にテストされる。
+
+---
+
+## ローカル開発手順
+
+### 1. 前提
+
+- Supabase CLI (>= v1.180 推奨)
+- Deno は Supabase CLI に同梱されるためグローバルインストール不要
+
+### 2. 環境変数の準備
+
+```bash
+cp supabase/functions/.env.sample supabase/functions/.env
+# .env を編集して GEMINI_API_KEY 等を設定
+```
+
+`.env` は Git ignore 済（root の `.gitignore` に `.env` パターン）。
+
+### 3. ローカル Function サーバ起動
+
+```bash
+# 単一 Function を起動
+supabase functions serve hello --env-file ./supabase/functions/.env
+
+# すべての Function を起動
+supabase functions serve --env-file ./supabase/functions/.env
+```
+
+デフォルトで `http://localhost:54321/functions/v1/<name>` で listen する。
+
+### 4. 動作確認（hello Function）
+
+ユーザー JWT を取得してから curl で叩く。JWT は Supabase Studio または
+ブラウザで `/dashboard` を開いた後、開発者ツールの Cookie から取得する。
+
+```bash
+JWT=<your-user-jwt>
+
+curl -X POST http://localhost:54321/functions/v1/hello \
+  -H "Authorization: Bearer $JWT" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"OkazuLink"}'
+
+# 期待:
+# {"message":"Hello, OkazuLink!","user":"<email>","timestamp":"..."}
+```
+
+未認証や allowed_users に無いアカウントの場合、それぞれ 401 / 403 が返る。
+
+### 5. 動作確認（extract-receipt Function）
+
+レシート画像を Storage の `receipts` バケットにアップロード後、
+そのパス（`<userId>/<uuid>.jpg` 形式）を imagePath として渡す。
+
+```bash
+# 事前準備: テスト画像を Storage にアップロード
+USER_ID=<auth.users.id>
+curl -X POST http://localhost:54321/storage/v1/object/receipts/$USER_ID/test.jpg \
+  -H "Authorization: Bearer $JWT" \
+  -H "Content-Type: image/jpeg" \
+  --data-binary @./test-receipt.jpg
+
+# OCR 実行
+curl -X POST http://localhost:54321/functions/v1/extract-receipt \
+  -H "Authorization: Bearer $JWT" \
+  -H "Content-Type: application/json" \
+  -d "{\"imagePath\":\"$USER_ID/test.jpg\"}"
+
+# 期待: OcrResult JSON
+# {
+#   "store_name": "ライフ",
+#   "purchased_at": "2026-04-27",
+#   "total_amount": 1623,
+#   "items": [{"raw_name":"玉ねぎ", ...}, ...],
+#   "discounts": [...],
+#   "confidence": 0.92
+# }
+```
+
+エラー応答:
+- 401 (`AUTH_*`): JWT 不正・ホワイトリスト外
+- 400 (`BAD_REQUEST`): imagePath 不足／パストラバーサル／他人のパス
+- 429 (`BUDGET_EXCEEDED`): hard モードで月次予算超過
+- 502 (`AI_INVALID_RESPONSE`): Flash + Pro 両方で OCR 失敗
+
+### 6. 動作確認（suggest-recipes Function）
+
+食材リスト + 料理ジャンルでレシピ候補を生成。同じ条件は `recipes` テーブルに
+キャッシュされる。
+
+```bash
+curl -X POST http://localhost:54321/functions/v1/suggest-recipes \
+  -H "Authorization: Bearer $JWT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ingredients": ["豚ロース", "玉ねぎ", "にんじん"],
+    "cuisine": "japanese",
+    "servings": 1,
+    "candidateCount": 3,
+    "profile": {
+      "allergies": [],
+      "disliked": ["パクチー"],
+      "goal_type": "diet"
+    }
+  }'
+
+# 期待: { cached: boolean, results: RecipeOut[] }
+# - 初回: cached=false, Gemini 呼出で 3 件のレシピ生成 + recipes/recipe_ingredients に保存
+# - 2 回目以降（同条件）: cached=true, DB から即返却（Gemini 呼出なし）
+#
+# RecipeOut:
+# {
+#   "id": "uuid",
+#   "title": "豚バラと玉ねぎの生姜焼き",
+#   "cuisine": "japanese",
+#   "description": "...",
+#   "servings": 1,
+#   "time_minutes": 15,
+#   "calories_kcal": 480,
+#   "ingredients": [{"name": "豚ロース", "amount": "100g", "optional": false}, ...],
+#   "steps": ["...", "..."]
+# }
+```
+
+エラー応答:
+- 400 (`BAD_REQUEST`): ingredients 空 / cuisine 不正 / 範囲外
+- 429 (`BUDGET_EXCEEDED`): hard モードで月次予算超過
+- 502 (`AI_INVALID_RESPONSE`): JSON パース失敗 / 検証エラー
+
+cuisine の許容値: `japanese | chinese | italian | french | ethnic | korean | sweets | other`
+
+---
+
+## 本番デプロイ
+
+### 環境変数（secrets）の登録
+
+```bash
+# プロジェクトに紐付け済みの状態で
+supabase secrets set GEMINI_API_KEY=AIzaSy...
+supabase secrets set MODEL_OCR=gemini-2.5-flash
+# 注: gemini-2.5-pro は free tier 不可。billing 未登録なら flash 系に揃える
+supabase secrets set MODEL_OCR_FALLBACK=gemini-2.5-pro
+supabase secrets set MODEL_RECIPE=gemini-2.5-flash
+supabase secrets set MODEL_ADVICE=gemini-2.5-pro
+supabase secrets set MODEL_REPORT=gemini-2.5-flash-lite
+# P-14: 楽天レシピ API（楽天モードのレシピ提案を使う場合のみ必須）
+supabase secrets set RAKUTEN_APP_ID=1234567890123456789
+supabase secrets set MONTHLY_AI_BUDGET_JPY=1000
+supabase secrets set AI_BUDGET_MODE=soft
+supabase secrets set USD_JPY_RATE=150
+```
+
+`SUPABASE_URL` と `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` は
+Supabase 側で自動付与される（明示設定不要）。
+
+### Function のデプロイ
+
+```bash
+# 個別
+supabase functions deploy hello
+
+# 一括
+supabase functions deploy
+```
+
+### デプロイ後の確認
+
+```bash
+PROJECT_URL=https://<project-ref>.supabase.co
+JWT=<production-user-jwt>
+
+curl -X POST $PROJECT_URL/functions/v1/hello \
+  -H "Authorization: Bearer $JWT" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"World"}'
+```
+
+---
+
+## テスト戦略
+
+### 単体テスト（vitest）
+
+`_shared/*.test.ts` および各 Function 配下の純粋関数テストは web/ から実行される:
+
+```bash
+cd web
+pnpm test
+```
+
+カバレッジ:
+- `_shared/budget.ts`: コスト計算・予算判定（14 cases）
+- `_shared/prompts.ts`: プロンプト生成・キャッシュキー（15 cases）
+- `_shared/gemini.ts`: HTTP クライアント（16 cases、fetch を vi.fn でモック）
+- `_shared/sanitize.ts`: ログ用 payload マスキング（16 cases）
+- `_shared/hash.ts`: SHA-256 ハッシュ（6 cases、標準値との照合含む）
+- `extract-receipt/validate.ts`: Gemini OCR 出力検証（19 cases）
+- `suggest-recipes/validate.ts`: Gemini レシピ出力検証（18 cases）
+
+### 統合テスト（手動）
+
+`auth.ts` `ai-log.ts` および各 Function 本体は Deno 専用のため vitest からは
+直接テストしない。`supabase functions serve` でローカル起動して動作確認する。
+
+PR-C 以降では実画像・実プロンプトでの E2E 確認を行う。
+
+---
+
+## 既知の注意点
+
+- **CORS**: `ALLOWED_ORIGIN` 環境変数で制御。未設定ならローカル開発用に `*` を許す。
+  本番では Vercel ドメイン (`https://okazu-link.vercel.app` 等) を厳密設定すること
+- **request_payload 記録**: `_shared/sanitize.ts` の `sanitizeForAiLog()` で
+  画像 base64・API キー・トークンをマスクしてから ai_advice_logs に保存
+- **エラーメッセージ**: `GeminiError` クラスで `reason` を構造化、機密値は
+  `maskString()` でマスクしてからログ出力
+- **コスト管理**: `evaluateBudget()` は呼び出し前にチェック必須。`hard` モードで超過時は呼出を拒否
+- **月の境界**: UTC で集計（JST との時差で月初 9 時間が前月扱い）。完全な
+  JST 月次集計が必要になったら DB の `at time zone 'Asia/Tokyo'` で対応
+- **トークン数**: `usageMetadata` が partial の場合は `console.warn` を出し、
+  cost_usd は欠損トークン数 = 0 として記録される点に注意
+- **モデル名の更新**: Gemini 3 系の正式リリース後、`budget.ts` の `PRICING` テーブルを実価格で更新する
+
+## 環境変数の完全リスト
+
+| 変数名 | 用途 | 必須? | 例 |
+|---|---|---|---|
+| `SUPABASE_URL` | Supabase プロジェクト URL（Edge Runtime が自動付与） | ✅ | `https://xxx.supabase.co` |
+| `SUPABASE_ANON_KEY` | anon JWT 検証用 | ✅ | `eyJ...` |
+| `SUPABASE_SERVICE_ROLE_KEY` | RLS バイパス用（ai_advice_logs 等の書込） | ✅ | `eyJ...` |
+| `GEMINI_API_KEY` | Google AI Studio API キー | ✅ | `AIzaSy...` |
+| `MODEL_OCR` | レシート OCR 用モデル | optional | `gemini-2.5-flash` |
+| `MODEL_OCR_FALLBACK` | OCR 失敗時のフォールバック | optional | `gemini-2.5-pro` |
+| `MODEL_RECIPE` | レシピ提案用モデル | optional | `gemini-2.5-flash` |
+| `MODEL_ADVICE` | 栄養アドバイス（Phase 2）用モデル | optional | `gemini-2.5-flash` |
+| `MODEL_REPORT` | 月次レポート（将来）用モデル | optional | `gemini-2.5-flash-lite` |
+| `RAKUTEN_APP_ID` | 楽天レシピ API のアプリ ID（楽天モード使用時のみ必須）| optional* | `1234567890123456789` |
+| `MONTHLY_AI_BUDGET_JPY` | 月次予算（円） | optional | `1000` |
+| `AI_BUDGET_MODE` | `soft`（警告のみ）/ `hard`（超過時停止） | optional | `soft` |
+| `USD_JPY_RATE` | コスト円換算用レート | optional | `150` |
+| `ALLOWED_ORIGIN` | CORS Allow-Origin（本番はここで制御） | optional | `https://okazu-link.vercel.app` |
