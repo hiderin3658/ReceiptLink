@@ -2,20 +2,32 @@
 
 レシート写真を撮るだけで家計簿が完成するアプリ。
 
-> **このリポジトリの状態**: OkazuLink プロジェクトから「認証 + レシートスキャン + OCR」部分のソースをコピーした初期状態です。家計簿アプリ用に再設計・改修する必要があります。
+> **このリポジトリの状態**: OkazuLink プロジェクトから「認証 + レシートスキャン + OCR」部分のソースをコピーした初期状態 + 要件定義・設計書整備済み。これから家計簿アプリ用に再設計・改修するフェーズに入ります。
+
+---
+
+## ドキュメント
+
+| ファイル | 内容 |
+|---|---|
+| [`docs/requirements.md`](./docs/requirements.md) | 要件定義書（ターゲット・機能要件・制約） |
+| [`docs/design.md`](./docs/design.md) | 設計書（DB スキーマ・画面・フロー・固定費自動計上） |
+| [`docs/receipt-scan-spec.md`](./docs/receipt-scan-spec.md) | 認証・OCR・Storage の共通仕様（OkazuLink から継承） |
+| [`docs/adaptation-todo.md`](./docs/adaptation-todo.md) | 実装 TODO リスト（Phase 0 〜 Phase 7） |
+| [`docs/legacy/`](./docs/legacy/) | OkazuLink 由来の参考ドキュメント |
 
 ---
 
 ## プロジェクト由来
 
-このプロジェクトは姉妹アプリ **[OkazuLink](../OkazuLink/)**（一人暮らし女性向け食生活コーチ）から、共通利用可能な以下の部分のコードをコピーして作成されました：
+このプロジェクトは姉妹アプリ **OkazuLink**（一人暮らし女性向け食生活コーチ）から、共通利用可能な以下の部分のコードをコピーして作成されました：
 
 - Google OAuth + Supabase 認証
 - レシート画像のアップロード（Supabase Storage）
 - Gemini API によるレシート OCR（`extract-receipt` Edge Function）
 - 商品リスト UI（編集・削除）
 
-家計簿固有の機能（カテゴリ分類、月次集計、グラフ、予算管理など）は**未実装**です。
+家計簿固有の機能（カテゴリ管理、月次集計、グラフ、固定費自動計上など）は **これから実装** します。
 
 ---
 
@@ -25,102 +37,99 @@
 ReceiptLink/
 ├── README.md                          # 本ファイル
 ├── docs/
-│   ├── receipt-scan-spec.md           # ★ 共通利用部分の仕様書（NEW）
-│   ├── adaptation-todo.md             # ★ 家計簿アプリ化のための作業 TODO（NEW）
-│   ├── design.md.okazu-original.md    # OkazuLink の設計書（参考用）
-│   ├── phase-1-2-test-plan.okazu-original.md
-│   ├── phase-1-2-test-result.okazu-original.md
-│   └── phase1-implementation-plan.okazu-original.md
+│   ├── requirements.md                # ★ 要件定義書
+│   ├── design.md                      # ★ 設計書
+│   ├── receipt-scan-spec.md           # 共通利用部分の仕様
+│   ├── adaptation-todo.md             # 実装 TODO
+│   └── legacy/                        # OkazuLink 由来の参考ドキュメント
 ├── supabase/
 │   ├── config.toml                    # Supabase ローカル設定
 │   ├── seed.sql
 │   ├── functions/
 │   │   ├── _shared/                   # 認証・OCR共通ライブラリ
-│   │   │   ├── auth.ts                # JWT 検証
+│   │   │   ├── auth.ts
 │   │   │   ├── cors.ts
 │   │   │   ├── env.ts
-│   │   │   ├── gemini.ts              # Gemini API クライアント
-│   │   │   ├── ai-log.ts              # AI 呼び出しログ
+│   │   │   ├── gemini.ts
+│   │   │   ├── ai-log.ts
 │   │   │   ├── sanitize.ts
 │   │   │   ├── hash.ts
 │   │   │   └── types.ts
-│   │   ├── extract-receipt/           # ★ レシート OCR エンドポイント
+│   │   ├── extract-receipt/           # レシート OCR エンドポイント
 │   │   ├── hello/                     # 動作確認用
-│   │   ├── deno.json
-│   │   ├── import_map.json
-│   │   ├── .env.sample
-│   │   └── README.md.original
+│   │   └── ...
 │   └── migrations/
-│       ├── 20260421000001_phase0_schema.sql            # users / profiles 等
-│       ├── 20260421000002_phase1_shopping_recipes.sql  # ★ 家計簿用に大幅改修必要
-│       └── 20260421000004_storage_buckets.sql          # receipts バケット定義
+│       ├── 20260421000001_phase0_schema.sql            # ※ Phase 2 で破棄予定
+│       ├── 20260421000002_phase1_shopping_recipes.sql  # ※ Phase 2 で破棄予定
+│       └── 20260421000004_storage_buckets.sql          # ※ Phase 2 で破棄予定
 └── web/
     ├── app/
     │   ├── (auth)/login/              # ログイン画面（Google OAuth）
     │   ├── (app)/
     │   │   ├── layout.tsx             # ナビ付きレイアウト
-    │   │   └── shopping/              # ★ 買物履歴 → 「レシート履歴/家計簿」へ改名予定
+    │   │   └── shopping/              # ★ Phase 3 で expense/ にリネーム予定
     │   └── api/
     │       ├── auth/                  # OAuth コールバック / サインアウト
-    │       └── shopping/export/       # CSV エクスポート
+    │       └── shopping/export/       # ★ Phase 3 で expense/ にリネーム予定
     ├── components/
-    │   ├── layout/                    # 共通ナビ（要メニュー見直し）
-    │   └── shopping/
-    │       ├── receipt-uploader.tsx   # ★ レシート撮影 UI（再利用可）
-    │       ├── new-shopping-flow.tsx  # 撮影 → OCR → 確認のフロー
-    │       └── shopping-form.tsx      # 商品リスト編集
+    │   ├── layout/                    # 共通ナビ
+    │   └── shopping/                  # ★ Phase 3 で expense/ にリネーム予定
     ├── lib/
     │   ├── supabase/                  # Supabase クライアント（共通）
-    │   └── shopping/                  # 買物 = レシートのドメインロジック
-    │       ├── ocr.ts                 # extract-receipt 呼び出し
-    │       ├── actions.ts             # Server Action
-    │       ├── schema.ts              # zod スキーマ
-    │       ├── csv.ts                 # CSV エクスポート
-    │       └── ...
+    │   └── shopping/                  # ★ Phase 3 で expense/ にリネーム予定
     ├── scripts/
-    │   ├── tsconfig.json
-    │   └── mock-receipts/             # ★ テスト用モックレシート生成
-    │       ├── data.ts                # レシートデータ定義（マルハチ/ライフ/ダイクマ）
-    │       ├── generate.ts            # PDF/PNG生成スクリプト
-    │       ├── template.ts            # HTMLテンプレート
-    │       ├── safe-slug.ts
-    │       └── output/                # 生成済みレシート（PDF×10 + PNG×10）
+    │   └── mock-receipts/             # テスト用モックレシート生成
     └── types/
-        └── database.ts                # ★ レシピ系の型を削除し、家計簿型を追加必要
+        └── database.ts                # ★ Phase 1 でレシピ系型を削除予定
 ```
 
-★ = 家計簿アプリ用に改修が必要
-
 ---
 
-## まずやるべきこと
-
-1. **`docs/receipt-scan-spec.md` を読む**（共通利用部分の仕様）
-2. **`docs/adaptation-todo.md` を読む**（家計簿化に向けた具体的な作業リスト）
-3. **新規 git リポジトリとして初期化**
-   ```sh
-   cd /Volumes/990PRO_SSD/personal/ReceiptLink
-   git init
-   git add .
-   git commit -m "chore: OkazuLink から共通部分をコピーして初期化"
-   ```
-4. **`web/package.json` の `name` を `receipt-link-web` に変更**
-5. **`.env` 系ファイルを再設定**（新しい Supabase プロジェクトを作成）
-6. **マイグレーションを家計簿用に書き直す**
-
----
-
-## 技術スタック（OkazuLink から継承）
+## 技術スタック
 
 - **フロントエンド**: Next.js 15 (App Router) + React 19 + TypeScript + Tailwind CSS v4
+- **グラフ**: Recharts（**新規追加予定**）
 - **バックエンド**: Supabase（Postgres + Auth + Storage + Edge Functions）
 - **AI**: Gemini 3 Flash / Pro（OCR 用、フォールバック付き）
 - **テスト**: Vitest + Playwright
-- **デプロイ想定**: Vercel + Supabase Cloud
+- **デプロイ**: Vercel + Supabase Cloud
+
+---
+
+## セットアップ
+
+具体的な手順は [`docs/adaptation-todo.md` の Phase 0](./docs/adaptation-todo.md) を参照。
+
+ざっくりした流れ:
+
+1. 新規 Supabase プロジェクト作成（無料枠 / Tokyo）
+2. `web/.env.local` を作成し Supabase URL / anon key を設定
+3. Supabase に Google OAuth プロバイダ設定
+4. `supabase/functions/.env` に Gemini API キーを設定
+5. `cd web && pnpm install`
+6. `pnpm dev`
+
+---
+
+## 開発の進め方
+
+要件 → 設計 は確定済み。今後は以下の順で進めます:
+
+| Phase | 内容 |
+|---|---|
+| Phase 1 | 不要コード削除（OkazuLink 由来のレシピ・栄養関連） |
+| Phase 2 | DB マイグレーション統合・書き直し |
+| Phase 3 | ドメインロジック書き換え（`shopping/` → `expense/`） |
+| Phase 4 | UI 改修（ナビ / フォーム / ダッシュボード新規） |
+| Phase 5 | 固定費機能 + レポート機能 |
+| Phase 6 | ブランディング + Vercel デプロイ |
+| Phase 7 | テスト + バグ修正 |
+
+詳細は [`docs/adaptation-todo.md`](./docs/adaptation-todo.md) と [`docs/design.md`](./docs/design.md) を参照。
 
 ---
 
 ## 注意事項
 
-- OkazuLink から**コードをコピーした時点のスナップショット**です。OkazuLink 側で改修が入っても自動では同期されません。必要に応じて手動で取り込んでください。
-- `web/.env.local` などのシークレットは含まれていません（`.env.example` のみコピー）。
+- OkazuLink から **コードをコピーした時点のスナップショット** です。OkazuLink 側で改修が入っても自動では同期されません。
+- `web/.env.local` などのシークレットは含まれていません（`.env.example` のみ）。
