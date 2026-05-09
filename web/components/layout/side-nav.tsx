@@ -2,17 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Receipt, ChefHat, LineChart, Settings, Shield, Apple, Dumbbell, Utensils } from "lucide-react";
+import { Home, Receipt, Plus, Settings, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "ダッシュボード", icon: Home },
-  { href: "/shopping", label: "買物", icon: Receipt },
-  { href: "/recipes", label: "レシピ", icon: ChefHat },
-  { href: "/nutrition", label: "栄養", icon: Apple },
-  { href: "/weight", label: "体重", icon: LineChart },
-  { href: "/exercise", label: "運動", icon: Dumbbell },
-  { href: "/meals", label: "食事", icon: Utensils },
+  { href: "/dashboard", label: "ホーム", icon: Home },
+  { href: "/shopping", label: "履歴", icon: Receipt },
+  { href: "/shopping/new", label: "追加", icon: Plus },
   { href: "/settings", label: "設定", icon: Settings },
 ] as const;
 
@@ -23,7 +19,7 @@ export function SideNav({ isAdmin }: { isAdmin: boolean }) {
     <aside className="hidden w-56 shrink-0 border-r border-[var(--color-border)] md:block">
       <div className="sticky top-0 p-4">
         <Link href="/dashboard" className="mb-6 block text-lg font-bold">
-          OkazuLink
+          ReceiptLink
         </Link>
         <nav aria-label="メインナビゲーション">
           <ul className="space-y-1">

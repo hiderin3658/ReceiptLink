@@ -29,22 +29,5 @@ export function aggregateMonthlySummary(rows: RecordRow[]): MonthlyRow[] {
     .sort((a, b) => (a.year_month < b.year_month ? 1 : -1));
 }
 
-export type IngredientNameRow = {
-  raw_name: string;
-  display_name: string | null;
-};
-
-/** 食材名を新しい順に集めて重複除去。`display_name` 優先、無ければ `raw_name`。 */
-export function dedupeIngredientNames(rows: IngredientNameRow[], limit: number): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const it of rows) {
-    const name = it.display_name ?? it.raw_name;
-    if (!seen.has(name)) {
-      seen.add(name);
-      out.push(name);
-      if (out.length >= limit) break;
-    }
-  }
-  return out;
-}
+// dedupeIngredientNames はレシピ提案用だったため Phase 1 で削除。
+// 集計系の純粋関数は PR-3 で expense 用 aggregations に拡張する。
