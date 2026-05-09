@@ -92,6 +92,7 @@ OkazuLink 由来で家計簿アプリに不要な部分を削除。
 - [ ] 🔴 `web/lib/expense/recurring.ts` 新規実装
   - 未生成の固定費を計算（[design.md §7.1](./design.md)）
   - 生成 Server Action（差分 INSERT + `last_generated_month` 更新）
+  - **月末丸めロジック**: `day_of_month` が当月に存在しない場合（例: 2 月の 31 日）は当月の月末日に丸める純粋関数 `resolveDayOfMonth(year, month, dayOfMonth): Date` を実装し、ユニットテストを追加
 - [ ] 🟡 `web/lib/expense/csv.ts`
   - 出力カラムを家計簿用に変更（[design.md §9](./design.md)）
 

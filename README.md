@@ -100,14 +100,39 @@ ReceiptLink/
 
 具体的な手順は [`docs/adaptation-todo.md` の Phase 0](./docs/adaptation-todo.md) を参照。
 
-ざっくりした流れ:
+### A. ローカル開発（Docker + Supabase CLI）— 推奨
+
+開発初期は本番 Supabase Cloud プロジェクトを作らず、ローカル Supabase で動作確認します。
+
+```sh
+# 1) 依存関係
+cd web && pnpm install
+
+# 2) ローカル Supabase 起動（要 Docker）
+cd .. && supabase start
+# → API URL: http://127.0.0.1:54321
+#   anon key と service_role key は出力されるので控える
+
+# 3) マイグレーション適用 + シード
+supabase db reset
+
+# 4) 環境変数
+cp web/.env.example web/.env.local
+# NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY を
+# supabase start で表示された値に書き換える
+cp supabase/functions/.env.sample supabase/functions/.env
+# GEMINI_API_KEY を Google AI Studio で取得して設定
+
+# 5) Web 起動
+cd web && pnpm dev
+```
+
+### B. 本番環境（Vercel + Supabase Cloud）— PR-7 で実施
 
 1. 新規 Supabase プロジェクト作成（無料枠 / Tokyo）
-2. `web/.env.local` を作成し Supabase URL / anon key を設定
-3. Supabase に Google OAuth プロバイダ設定
-4. `supabase/functions/.env` に Gemini API キーを設定
-5. `cd web && pnpm install`
-6. `pnpm dev`
+2. Supabase に Google OAuth プロバイダ設定
+3. `supabase db push` でマイグレーション適用
+4. Vercel に環境変数を設定してデプロイ
 
 ---
 
