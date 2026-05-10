@@ -9,6 +9,8 @@ import { CategorySection } from "@/components/settings/category-section";
 import { RecurringSection } from "@/components/settings/recurring-section";
 import { AllowedUsersSection } from "@/components/settings/allowed-users-section";
 import { SignOutSection } from "@/components/settings/sign-out-section";
+import Link from "next/link";
+import { HelpCircle } from "lucide-react";
 import type {
   AllowedUser,
   RecurringExpense,
@@ -78,6 +80,21 @@ export default async function SettingsPage() {
       {isAdmin && (
         <AllowedUsersSection users={allowedUsers} currentUserEmail={userEmail} />
       )}
+
+      {/* ヘルプ導線 (モバイルでもアクセスできるよう設定画面末尾に配置) */}
+      <section className="rounded-lg border border-[var(--color-border)] bg-white p-4">
+        <h2 className="mb-2 text-sm font-semibold">使い方ガイド</h2>
+        <p className="mb-3 text-xs text-[var(--color-muted-foreground)]">
+          主要操作の手順とよくある質問をまとめています。
+        </p>
+        <Link
+          href="/help"
+          className="inline-flex items-center gap-2 rounded-md border border-[var(--color-border)] bg-white px-4 py-2 text-sm hover:bg-[var(--color-muted)]"
+        >
+          <HelpCircle size={14} aria-hidden />
+          使い方ガイドを開く
+        </Link>
+      </section>
 
       <SignOutSection />
     </div>
