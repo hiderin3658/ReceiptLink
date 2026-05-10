@@ -20,6 +20,7 @@ import {
   generateImageFileName,
   type OcrResult,
 } from "@/lib/expense/ocr";
+import { CameraCapture } from "./camera-capture";
 
 type Status = "idle" | "compressing" | "uploading" | "extracting" | "error";
 
@@ -40,10 +41,12 @@ interface Props {
 }
 
 export function ReceiptUploader({ onResult }: Props) {
-  // capture="environment" 付きの input は Android Chrome でカメラ起動のみ
-  // （ギャラリー選択不可）になる仕様のため、撮影用と画像選択用で input を分ける。
-  const cameraInputRef = useRef<HTMLInputElement>(null);
+  // 「画像を選択」用の input ref。Android では capture なしで通常のファイルピッカーが開く。
   const galleryInputRef = useRef<HTMLInputElement>(null);
+  // ブラウザ内カメラ (getUserMedia) モーダルの開閉状態。
+  // OS のカメラアプリ経由は HDR 等の後処理で OOM になりやすいため、
+  // Chrome タブ内で完結する getUserMedia 撮影に切替。
+  const [cameraOpen, setCameraOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>("idle");
@@ -52,6 +55,12 @@ export function ReceiptUploader({ onResult }: Props) {
   async function handleSelectFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
+    await acceptFile(f);
+  }
+
+  // ファイル取得経路 (input / カメラ撮影) を共通化。
+  // 圧縮 → プレビュー設定までを担う。
+  async function acceptFile(f: File) {
     if (!f.type.startsWith("image/")) {
       setErrorMessage("画像ファイルを選択してください");
       return;
@@ -75,13 +84,17 @@ export function ReceiptUploader({ onResult }: Props) {
     setStatus("idle");
   }
 
+  function handleCameraCapture(captured: File) {
+    setCameraOpen(false);
+    void acceptFile(captured);
+  }
+
   function handleReset() {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setFile(null);
     setPreviewUrl(null);
     setErrorMessage(null);
     setStatus("idle");
-    if (cameraInputRef.current) cameraInputRef.current.value = "";
     if (galleryInputRef.current) galleryInputRef.current.value = "";
   }
 
@@ -158,19 +171,15 @@ export function ReceiptUploader({ onResult }: Props) {
           </div>
         ) : (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {/* カメラで撮影 (capture="environment" でその場撮影が起動) */}
-          <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed border-[var(--color-border)] bg-[var(--color-muted)] p-6 text-sm hover:bg-[color-mix(in_oklch,var(--color-muted)_50%,white)]">
+          {/* カメラで撮影 (Chrome タブ内 getUserMedia でカメラ起動) */}
+          <button
+            type="button"
+            onClick={() => setCameraOpen(true)}
+            className="flex flex-col items-center justify-center gap-2 rounded-md border border-dashed border-[var(--color-border)] bg-[var(--color-muted)] p-6 text-sm hover:bg-[color-mix(in_oklch,var(--color-muted)_50%,white)]"
+          >
             <Camera size={28} aria-hidden />
             <span>カメラで撮影</span>
-            <input
-              ref={cameraInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              onChange={handleSelectFile}
-            />
-          </label>
+          </button>
           {/* 撮影済み画像を選択 (capture なしでギャラリーから選べる) */}
           <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed border-[var(--color-border)] bg-[var(--color-muted)] p-6 text-sm hover:bg-[color-mix(in_oklch,var(--color-muted)_50%,white)]">
             <ImageIcon size={28} aria-hidden />
@@ -241,6 +250,12 @@ export function ReceiptUploader({ onResult }: Props) {
       <p className="text-xs text-[var(--color-muted-foreground)]">
         ※ 抽出結果は下のフォームに反映されます。送信前に確認・修正してください。
       </p>
+
+      <CameraCapture
+        open={cameraOpen}
+        onClose={() => setCameraOpen(false)}
+        onCapture={handleCameraCapture}
+      />
     </section>
   );
 }
