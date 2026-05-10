@@ -524,6 +524,59 @@
 
 ---
 
+## 19. Vercel 本番環境テスト結果（2026-05-10 実行）
+
+### 19.1 環境
+
+| 項目 | 値 |
+|---|---|
+| 本番 URL | `https://receipt-link-vert.vercel.app/` |
+| デプロイ元 | GitHub `main` (PR #11〜#17 マージ済み時点) |
+| Supabase | Cloud `zqobhmhcimwqnwmwjrgt` (ローカルと同一) |
+| 認証 | Google OAuth |
+
+### 19.2 admin 視点 (hiderinchan3658@gmail.com) 集計
+
+ローカルで実施した全テスト 41 件に加え、Vercel 環境特有の経路 (Edge Function、Storage、Server Action 本番ビルド版) も含めて再実施:
+
+| 区分 | 件数 |
+|---|---:|
+| ✅ PASS | **41** (TC-AUTH-01/02/04, TC-INPUT-MAN-01〜04, TC-INPUT-OCR-01/02, TC-LIST-01, TC-DETAIL-01, TC-EDIT-01/02, TC-DELETE-01, TC-DASH-01/03/04, TC-REPORT-01〜04, TC-PROF-01〜03, TC-CAT-01〜06, TC-REC-01〜05, TC-CSV-01/02, TC-AUTH-ADM-01〜04) |
+| ⚠ 軽微なバグ | **1** (TC-DASH-02 / TC-REPORT カテゴリ別円グラフ) |
+| ⏸ スキップ | **1** (TC-REC-06: ユニットテスト担保) |
+| ➖ 未実施 | **3** (TC-AUTH-03 別アカウント拒否、TC-NAV-01/02) |
+
+### 19.3 user 視点 (dek.hamasan@gmail.com / role=user) 主要確認
+
+`allowed_users` に user role で追加した第 2 アカウントでログインして実施:
+
+| TC | 結果 | 備考 |
+|---|---|---|
+| TC-AUTH-02 (user) | ✅ | Google OAuth 経由で `/dashboard` 表示成功 |
+| TC-AUTH-04 (user) | ✅ | 5 ルート全アクセス可能 |
+| **TC-USER-01** (新規) | ✅ | `/settings` のサブヘッダが「プロフィール / カテゴリ / 固定費」(admin の「管理」が欠落)、ホワイトリスト管理セクション完全非表示 |
+| TC-INPUT-MAN-01 (user) | ✅ | 「userテスト店舗 / user品A / その他 / ¥999」登録成功 |
+| **TC-USER-RLS** (新規) | ✅ | user で 1 件登録 → admin で再ログインしてダッシュボード確認 → user の支出 ¥999 は **見えない** (合計 ¥0)。逆に user 視点でも admin の独自カテゴリ・固定費は見えない |
+
+### 19.4 Vercel 環境で検出した新規バグ
+
+#### 🟡 Medium - B-CHART-VERCEL-01: カテゴリ別円グラフが小金額で極小描画
+- **症状**: ダッシュボード (TC-DASH-02) とレポート (カテゴリ別内訳) の `CategoryPie` (Recharts) が、合計 ¥2,000 程度の小金額時に **線のように極端に小さく描画** される。凡例とリスト (¥1,400 / ¥350 / ¥250) は正常表示
+- **再現条件**: 月合計 ¥2,000 程度、カテゴリ 3 種以下、Vercel 本番ビルド
+- **解消条件**: 月合計 ¥87,000 (固定費計上後) になった時点では円グラフが正常に描画された
+- **推察原因**: `ResponsiveContainer` 内でデータ値が小さい際の Recharts の内部スケール計算問題、または初回ハイドレーション後のコンテナ高さ取得タイミング
+- **影響**: グラフが見えないがデータは取得できているので致命的ではない。UX 改善の対象
+- **未確認**: ローカル環境では同じデータ量で正常表示される (本番ビルド特有の可能性)
+
+### 19.5 Vercel 環境テストの結論
+
+- ローカルで確認した PR #13/#14 の修正は **全て本番でも反映済み・動作確認済み**
+- Edge Function (`extract-receipt`)、Storage 経路、Server Action 本番ビルド、CSV エクスポート、固定費自動計上、RLS 全て本番で正常動作
+- user 権限の境界制御 (admin only セクション非表示、自分のデータのみアクセス) は仕様通り
+- 残課題は 🟡 B-CHART-VERCEL-01 (円グラフ小描画) のみで、後続 PR で要調査
+
+---
+
 ## 16. 関連ドキュメント
 
 - [`requirements.md`](./requirements.md): 要件定義
