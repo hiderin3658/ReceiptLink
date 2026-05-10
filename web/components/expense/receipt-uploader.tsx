@@ -13,7 +13,7 @@
 //   7. 失敗時はエラー表示 + リトライ可能
 
 import { useRef, useState } from "react";
-import { Camera, Loader2, AlertCircle, RefreshCw } from "lucide-react";
+import { Camera, Image as ImageIcon, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
   generateImageFileName,
@@ -28,7 +28,10 @@ interface Props {
 }
 
 export function ReceiptUploader({ onResult }: Props) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // capture="environment" 付きの input は Android Chrome でカメラ起動のみ
+  // （ギャラリー選択不可）になる仕様のため、撮影用と画像選択用で input を分ける。
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>("idle");
@@ -54,7 +57,8 @@ export function ReceiptUploader({ onResult }: Props) {
     setPreviewUrl(null);
     setErrorMessage(null);
     setStatus("idle");
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (cameraInputRef.current) cameraInputRef.current.value = "";
+    if (galleryInputRef.current) galleryInputRef.current.value = "";
   }
 
   async function handleExtract() {
@@ -123,18 +127,33 @@ export function ReceiptUploader({ onResult }: Props) {
       </div>
 
       {!file ? (
-        <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed border-[var(--color-border)] bg-[var(--color-muted)] p-6 text-sm hover:bg-[color-mix(in_oklch,var(--color-muted)_50%,white)]">
-          <Camera size={28} aria-hidden />
-          <span>画像を選択 / 撮影</span>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="hidden"
-            onChange={handleSelectFile}
-          />
-        </label>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {/* カメラで撮影 (capture="environment" でその場撮影が起動) */}
+          <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed border-[var(--color-border)] bg-[var(--color-muted)] p-6 text-sm hover:bg-[color-mix(in_oklch,var(--color-muted)_50%,white)]">
+            <Camera size={28} aria-hidden />
+            <span>カメラで撮影</span>
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handleSelectFile}
+            />
+          </label>
+          {/* 撮影済み画像を選択 (capture なしでギャラリーから選べる) */}
+          <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed border-[var(--color-border)] bg-[var(--color-muted)] p-6 text-sm hover:bg-[color-mix(in_oklch,var(--color-muted)_50%,white)]">
+            <ImageIcon size={28} aria-hidden />
+            <span>画像を選択</span>
+            <input
+              ref={galleryInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleSelectFile}
+            />
+          </label>
+        </div>
       ) : (
         <div className="space-y-3">
           {previewUrl && (
