@@ -31,3 +31,19 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
 }
+
+/*
+ * iOS Safari の自動ズーム対策。
+ *
+ * input/select/textarea のフォントサイズが 16px 未満だと、フォーカス時に
+ * iOS Safari が自動的に画面をズームインする (アクセシビリティ仕様)。
+ * 一度ズームすると元のサイズに戻らずユーザー操作が必要となるため、
+ * 全フォーム要素のフォントサイズを 16px に固定して回避する。
+ *
+ * Tailwind の text-sm (14px) を多用しているため、CSS 側で上書きする。
+ */
+input,
+select,
+textarea {
+  font-size: 16px;
+}
