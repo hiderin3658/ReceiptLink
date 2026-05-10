@@ -46,9 +46,10 @@ function parseMonthStart(s: string): { year: number; month: number } {
  *
  *  挙動:
  *  - active = false の場合は空配列
- *  - last_generated_month が null（初回）の場合は created_at の翌月から当月まで
- *    （※ 過去全て遡るのではなく「テンプレ作成後」の月から計上開始）
- *  - last_generated_month がある場合は、その翌月から当月まで
+ *  - last_generated_month が null（初回）の場合は created_at の **当月** から当月まで
+ *    （月初〜中旬に追加した固定費の当月分も計上対象に含めるため。
+ *      過去全て遡るのではなく「テンプレ作成後」の月から計上開始）
+ *  - last_generated_month がある場合は、その翌月から当月まで（重複防止）
  *
  *  返り値の各要素は YYYY-MM-01 形式の文字列。古い順。
  */
@@ -72,17 +73,13 @@ export function pendingMonths(rec: RecurringExpense, today: Date): string[] {
       startMonth = last.month + 1;
     }
   } else {
-    // 初回: created_at の翌月から開始
+    // 初回: created_at の当月から開始。
+    // 旧ロジックは「翌月から」だったが、月初〜中旬に固定費を追加したユーザーが
+    // 当月分を計上できないという UX 問題があったため当月開始に変更。
+    // 「来月から始めたい」固定費は「来月になってから登録する」運用でカバー。
     const created = new Date(rec.created_at);
-    const cy = created.getFullYear();
-    const cm = created.getMonth() + 1;
-    if (cm === 12) {
-      startYear = cy + 1;
-      startMonth = 1;
-    } else {
-      startYear = cy;
-      startMonth = cm + 1;
-    }
+    startYear = created.getFullYear();
+    startMonth = created.getMonth() + 1;
   }
 
   const result: string[] = [];

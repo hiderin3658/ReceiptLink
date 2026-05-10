@@ -46,11 +46,21 @@ describe("pendingMonths", () => {
     expect(out).toEqual([]);
   });
 
-  it("初回生成: created_at の翌月から当月まで列挙", () => {
+  it("初回生成: created_at の当月から当月まで列挙", () => {
     // created_at = 2026-01-15、当月 = 2026-04
     const today = new Date(2026, 3, 5); // 2026-04-05
     const out = pendingMonths(baseRec, today);
-    expect(out).toEqual(["2026-02-01", "2026-03-01", "2026-04-01"]);
+    expect(out).toEqual(["2026-01-01", "2026-02-01", "2026-03-01", "2026-04-01"]);
+  });
+
+  it("初回生成: created_at が当月内 (同月追加) なら当月のみ", () => {
+    // created_at = 2026-05-10、当月 = 2026-05-15
+    const today = new Date(2026, 4, 15); // 2026-05-15
+    const out = pendingMonths(
+      { ...baseRec, created_at: "2026-05-10T00:00:00Z" },
+      today,
+    );
+    expect(out).toEqual(["2026-05-01"]);
   });
 
   it("last_generated_month の翌月から当月まで列挙", () => {
@@ -89,12 +99,12 @@ describe("pendingMonths", () => {
     expect(out).toEqual(["2026-01-01"]);
   });
 
-  it("初回 created_at が 12 月でも翌年 1 月から開始", () => {
+  it("初回 created_at が 12 月のとき、12 月から当月まで列挙", () => {
     const today = new Date(2026, 1, 10); // 2026-02-10
     const out = pendingMonths(
       { ...baseRec, created_at: "2025-12-15T00:00:00Z" },
       today,
     );
-    expect(out).toEqual(["2026-01-01", "2026-02-01"]);
+    expect(out).toEqual(["2025-12-01", "2026-01-01", "2026-02-01"]);
   });
 });
