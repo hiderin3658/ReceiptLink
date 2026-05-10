@@ -8,6 +8,7 @@ import { ProfileSection } from "@/components/settings/profile-section";
 import { CategorySection } from "@/components/settings/category-section";
 import { RecurringSection } from "@/components/settings/recurring-section";
 import { AllowedUsersSection } from "@/components/settings/allowed-users-section";
+import { SignOutSection } from "@/components/settings/sign-out-section";
 import type {
   AllowedUser,
   RecurringExpense,
@@ -77,6 +78,8 @@ export default async function SettingsPage() {
       {isAdmin && (
         <AllowedUsersSection users={allowedUsers} currentUserEmail={userEmail} />
       )}
+
+      <SignOutSection />
     </div>
   );
 }
