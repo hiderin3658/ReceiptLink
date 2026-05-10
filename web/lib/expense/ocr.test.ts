@@ -26,7 +26,6 @@ const sampleOcr: OcrResult = {
       quantity: 1,
       unit: "袋",
       total_price: 198,
-      tax_rate: 8,
       category_hint: "食費",
     },
     {
@@ -34,7 +33,6 @@ const sampleOcr: OcrResult = {
       quantity: 1,
       unit: "個",
       total_price: 698,
-      tax_rate: 10,
       category_hint: "日用品",
     },
   ],
