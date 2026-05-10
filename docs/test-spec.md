@@ -389,17 +389,17 @@
 | Section | 件数 | ✅ | ⚠ | ❌ | ⏸ | ➖ |
 |---|---:|---:|---:|---:|---:|---:|
 | 4. 認証 | 4 | 1 | 0 | 0 | 0 | 3 ⚠* |
-| 5. 支出登録 (5-a + 5-c) | 6 | 5 | 1 | 0 | 0 | 0 |
-| 6. 履歴系 | 5 | 3 | 1 | 1 | 0 | 0 |
-| 7. ダッシュボード | 4 | 3 | 0 | 1 | 0 | 0 |
-| 8. レポート | 4 | 3 | 1 | 0 | 0 | 0 |
-| 9. プロフィール | 3 | 2 | 1 | 0 | 0 | 0 |
+| 5. 支出登録 (5-a + 5-c) | 6 | 6 | 0 | 0 | 0 | 0 |
+| 6. 履歴系 | 5 | 5 | 0 | 0 | 0 | 0 |
+| 7. ダッシュボード | 4 | 4 | 0 | 0 | 0 | 0 |
+| 8. レポート | 4 | 4 | 0 | 0 | 0 | 0 |
+| 9. プロフィール | 3 | 3 | 0 | 0 | 0 | 0 |
 | 10. カテゴリ | 6 | 6 | 0 | 0 | 0 | 0 |
 | 11. 固定費 | 6 | 5 | 0 | 0 | 1 | 0 |
 | 12. CSV | 2 | 2 | 0 | 0 | 0 | 0 |
 | 13. ホワイトリスト | 4 | 4 | 0 | 0 | 0 | 0 |
 | 14. ナビゲーション | 2 | 0 | 0 | 0 | 0 | 2 |
-| **合計** | **46** | **34** | **4** | **2** | **1** | **5** |
+| **合計** | **46** | **40** | **0** | **0** | **1** | **5** |
 
 *Section 4 の TC-AUTH-01/02/03 は Google OAuth 対話操作が必要なため未実施。TC-AUTH-04 のみ ✅。
 
@@ -419,7 +419,7 @@
 | TC-INPUT-MAN-01 | ✅ | テスト店舗A / ¥500 / 食費 登録成功 |
 | TC-INPUT-MAN-02 | ✅ | 3 品目で合計 ¥1,250 (= 800+350+120-20) 自動計算 |
 | TC-INPUT-MAN-03 | ✅ | 品名空白で HTML5 required 阻止「このフィールドを入力してください」 |
-| TC-INPUT-MAN-04 | ⚠ | 値引 200 > 金額 100 で合計 ¥-100 → DB CHECK 阻止「保存に失敗しました」（汎用）。**UX 改善余地: 原因が伝わらない** |
+| TC-INPUT-MAN-04 | ✅ | (初回テスト ⚠) PR #14 で修正後の追試: 値引 200 > 金額 100 で submit すると「1 行目: 値引額が金額を超えています。値引は金額以下にしてください」と行番号付きでローカル検出 → submit 阻止 |
 | TC-INPUT-OCR-01 | ✅ | `mock-receipts/output/20260314-life.png` で OCR → 店舗「ライフ」/ 購入日 2026-03-14 / 合計 ¥3,090 / 16 品目自動入力。カテゴリは AI 推定（食費中心）。所要時間: 約 10 秒 |
 | TC-INPUT-OCR-02 | ✅ | OCR 結果の 1 行目品名「玉ねぎ 2L」→「玉ねぎ (修正済)」、カテゴリ「食費」→「日用品」に修正後、登録 → 詳細画面で修正値が反映されることを確認 |
 
@@ -428,8 +428,8 @@
 |---|---|---|
 | TC-LIST-01 | ✅ | 月別合計 ¥1,750 / 最近の支出 2 件 / CSV リンク表示 |
 | TC-DETAIL-01 | ✅ | 詳細表示でカテゴリ名・ソース・金額正しい |
-| TC-EDIT-01 | ⚠ | **🐛 Bug**: 編集モードで `purchased_at` が空になる (timestamptz と `<input type="date">` の YYYY-MM-DD 形式不整合) → HTML5 required で submit 阻止。再入力すれば成功 |
-| TC-EDIT-02 | ❌ | **🐛 Bug**: 明細追加しても `total_amount` が更新されない (record.total_amount > 0 なら保持仕様だが、編集時の挙動として不適切)。明細件数は増える、合計表示も明細レベルでは正しいが、ヘッダの合計と DB の records.total_amount は元値のまま |
+| TC-EDIT-01 | ✅ | (初回テスト ⚠) PR #13 で修正後の追試: 編集画面を開くと購入日「2026/05/10」が正しく表示され、変更・保存可能 |
+| TC-EDIT-02 | ✅ | (初回テスト ❌) PR #13 で修正後の追試: 明細追加でラベル「明細から自動: ¥1,500」が動的更新、保存後 DB の `total_amount` も明細合計に更新 (¥1,000 → ¥1,500) |
 | TC-DELETE-01 | ✅ | テスト医療品を確認ダイアログ経由で削除 → /expense にリダイレクト・一覧から消失 |
 
 #### Section 7. ダッシュボード
@@ -438,13 +438,13 @@
 | TC-DASH-01 | ✅ | 今月合計 ¥1,750 / 経過 10 日 / 31 日 / ペース予想 ¥5,425 (= 1750/10*31) 正確 |
 | TC-DASH-02 | ✅ | 円グラフ + カテゴリ別リスト（食費 ¥1,700 / 日用品 ¥350）表示 |
 | TC-DASH-03 | ✅ | 当月支出 0 で「今月の支出がまだありません」表示、合計 ¥0 |
-| TC-DASH-04 | ❌ | **🐛 Bug (Critical)**: `recurring-actions.ts` で `"use server"` ファイルから object (`initialGeneratePendingState`) を export しているため Server Action ロード自体が 500 → **固定費自動計上機能が完全に動作しない** |
+| TC-DASH-04 | ✅ | (初回テスト ❌ Critical) PR #13 で修正後の追試: 「1 件を計上」ボタン押下で固定費 ¥5,000 計上、ダッシュボード合計 ¥1,500 → ¥6,500 / 食費円グラフ追加表示。Server Action 正常動作 |
 
 #### Section 8. レポート
 | TC | 結果 | 備考 |
 |---|---|---|
 | TC-REPORT-01 | ✅ | 当月 ¥1,750 表示、前月比は前月データ無しのため null（表示しない仕様） |
-| TC-REPORT-02 | ⚠ | URL 直入力では 6 / 12 ヶ月切替動作 ✅、**「12ヶ月」「6ヶ月」リンククリックでは URL が変わらず遷移しない** (typedRoutes Link の挙動差) |
+| TC-REPORT-02 | ✅ | (初回テスト ⚠) PR #14 で修正後の追試: 「12ヶ月」クリックで `?ym=2026-05&months=12` に遷移、グラフが 6 → 12 ヶ月に拡張、active タブ切替も動作 |
 | TC-REPORT-03 | ✅ | 「前月」リンクで `?ym=2026-04&months=6` に遷移 |
 | TC-REPORT-04 | ✅ | 当月時に「次月」リンクが SPAN (薄表示) でクリック不可 |
 
@@ -453,7 +453,7 @@
 |---|---|---|
 | TC-PROF-01 | ✅ | プロフィール初期表示確認（OAuth callback で full_name が初期登録されていた） |
 | TC-PROF-02 | ✅ | 表示名「ヒデリン」/ 生年「1990」保存成功「✓ 更新しました」 |
-| TC-PROF-03 | ⚠ | 生年 1899 で HTML5 `min=1900` 阻止 → DB は保護されるが、**エラー表示が出ず「保存ボタンを押しても何も起きない」UX** |
+| TC-PROF-03 | ✅ | (初回テスト ⚠) PR #14 で修正後の追試: 「1850」入力で「生年は 1900 〜 2026 の範囲で入力してください」と明示表示 |
 
 #### Section 10. カテゴリ管理
 | TC | 結果 | 備考 |
@@ -478,7 +478,7 @@
 #### Section 12. CSV エクスポート
 | TC | 結果 | 備考 |
 |---|---|---|
-| TC-CSV-01 | ✅ | 14 列ヘッダ + 全 6 行取得成功。⚠ 日付列が ISO 8601 timestamptz 表示で Excel 表示が見にくい (`2026-05-10T00:00:00+00:00`) |
+| TC-CSV-01 | ✅ | 14 列ヘッダ + 全行取得成功。日付列は PR #14 で修正後の追試で `2026-05-10` (YYYY-MM-DD) 形式で出力されることを確認 |
 | TC-CSV-02 | ✅ | 履歴 0 件で `/expense` の CSV リンク非表示確認 |
 
 #### Section 13. ホワイトリスト管理 (admin only)
@@ -493,23 +493,26 @@
 
 ## 17. 検出バグまとめ（重要度順）
 
-### 🔴 Critical
-- **B-DASH-04**: `web/lib/expense/recurring-actions.ts` で `"use server"` ファイルから object (`initialGeneratePendingState`) を export しているため、Server Action 読込時に Next.js が 500 を返し、**固定費自動計上機能（generatePendingExpensesAction）が一切動作しない**。`export const initialGeneratePendingState` を削除し定数を内部に閉じ込めるか、別ファイルへ分離する必要あり。
+> 全ての検出バグは PR #13 / #14 で修正済み (2026-05-10)。各バグの追試結果は §16 の TC 詳細表に記録。
 
-### 🟠 High
-- **B-EDIT-01**: 編集モードで `record.purchased_at` (timestamptz, ISO 8601) を `<input type="date">` の `value` に直接渡すため、ブラウザは無効値として扱い空表示 → HTML5 required で submit 阻止。ユーザーは原因が分からないため操作不能に陥る。`record.purchased_at.slice(0, 10)` で YYYY-MM-DD に切り詰めて渡す対処が必要。
-- **B-EDIT-02**: 編集時に `record.total_amount` (既存値、例: 500) が initial として `totalAmount` state に設定され、明細追加 / 編集後も「未入力なら明細から自動」が発動しない。結果として ヘッダの合計と DB の `expense_records.total_amount` が明細合計と乖離する。`updateExpenseRecord` で常に明細から再計算する、または編集 UI で「合計を自動計算」モードを追加する。
+### 🔴 Critical (修正済み: PR #13)
+- **B-DASH-04** ✅ Fixed: `web/lib/expense/recurring-actions.ts` で `"use server"` ファイルから object (`initialGeneratePendingState`) を export しているため、Server Action 読込時に Next.js が 500 を返し、**固定費自動計上機能（generatePendingExpensesAction）が一切動作しない** 問題。`initialGeneratePendingState` の export を削除して解消。
 
-### 🟡 Medium
-- **B-PROF-03**: 生年 input で `min=1900` を超えた値を入力 → HTML5 で submit 阻止されるが、**エラーメッセージが画面に表示されない**ため「保存ボタンを押しても何も起きない」UX。ユーザーが気付きにくい。
-- **B-INPUT-MAN-04**: 値引 > 金額の組み合わせで合計が負になる場合、DB CHECK で阻止されるが「保存に失敗しました（汎用）」しか表示されない。事前にクライアント側でバリデーションする、または DB エラーの内容を判別して具体的なメッセージを返す。
-- **B-REPORT-02**: `/reports` の「6ヶ月」「12ヶ月」切替リンクをクリックしても URL が変わらず描画も切り替わらない。前月リンクは動く。`typedRoutes` の object href Link 挙動差の可能性。
+### 🟠 High (修正済み: PR #13)
+- **B-EDIT-01** ✅ Fixed: 編集モードで `record.purchased_at` (timestamptz, ISO 8601) を `<input type="date">` の `value` に直接渡すため、ブラウザは無効値として扱い空表示 → HTML5 required で submit 阻止される問題。`record.purchased_at.slice(0, 10)` で YYYY-MM-DD に整形して解消。
+- **B-EDIT-02** ✅ Fixed: 編集時に `record.total_amount` (既存値) が initial として `totalAmount` state に設定され、明細追加 / 編集後も「未入力なら明細から自動」が発動しない問題。合計欄を「空のまま = 明細から自動計算」運用に統一、編集モードでは元値を placeholder に表示することで解消。
 
-### 🟢 Low
-- **B-CSV-01**: CSV の「日付」列が ISO 8601 timestamptz そのまま (`2026-05-10T00:00:00+00:00`)。Excel 表示で見にくい。`formatDate` ヘルパーで `YYYY-MM-DD` または日本語形式に整形して出力。
+### 🟡 Medium (修正済み: PR #14)
+- **B-PROF-03** ✅ Fixed: 生年 input で `min=1900` を超えた値を入力 → HTML5 で submit 阻止されるが、**エラーメッセージが画面に表示されない**問題。`handleSubmit` のローカル検証 + `onInvalid` ハンドラで具体メッセージ表示に修正。
+- **B-INPUT-MAN-04** ✅ Fixed: 値引 > 金額の組み合わせで「保存に失敗しました（汎用）」しか表示されない問題。submit 前にローカル検証で該当行を特定して「N 行目: 値引額が金額を超えています...」と具体メッセージを表示するよう修正。
+- **B-REPORT-02** ✅ Fixed: `/reports` の「6ヶ月」「12ヶ月」切替リンクをクリックしても URL が変わらず描画も切り替わらない問題。文字列 href + `Route` 型に変更して解消。
+
+### 🟢 Low (修正済み: PR #14)
+- **B-CSV-01** ✅ Fixed: CSV の「日付」列が ISO 8601 timestamptz そのまま出力される問題。`purchased_at.slice(0, 10)` で `YYYY-MM-DD` 形式に整形して解消。
 
 ### ⏸ 環境依存（解消済み）
-- ~~**TC-INPUT-OCR-01/02**~~: 2026-05-10 追試で Edge Function デプロイ完了後に ✅ 確認済み。
+- ~~**TC-INPUT-OCR-01/02**~~: 2026-05-10 追試で Edge Function デプロイ完了後に ✅ 確認済み (PR #15)。
+- ~~**TC-REC-04**~~: PR #13 マージ後に追試で ✅ 確認済み (PR #16)。
 
 ---
 
