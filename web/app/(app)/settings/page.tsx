@@ -8,6 +8,7 @@ import { ProfileSection } from "@/components/settings/profile-section";
 import { CategorySection } from "@/components/settings/category-section";
 import { RecurringSection } from "@/components/settings/recurring-section";
 import { AllowedUsersSection } from "@/components/settings/allowed-users-section";
+import { SignOutSection } from "@/components/settings/sign-out-section";
 import type {
   AllowedUser,
   RecurringExpense,
@@ -32,7 +33,7 @@ export default async function SettingsPage() {
     await Promise.all([
       supabase
         .from("user_profiles")
-        .select("display_name, birth_year")
+        .select("display_name")
         .eq("user_id", user.id)
         .maybeSingle(),
       listCategories(supabase),
@@ -54,7 +55,7 @@ export default async function SettingsPage() {
         .order("created_at", { ascending: true }),
     ]);
 
-  const profile = (profileRes.data as Pick<UserProfile, "display_name" | "birth_year"> | null) ?? null;
+  const profile = (profileRes.data as Pick<UserProfile, "display_name"> | null) ?? null;
   const recurring = (recurringRes.data ?? []) as RecurringExpense[];
   const isAdmin = allowedSelfRes.data?.role === "admin";
   const allowedUsers = isAdmin ? ((allowedAllRes.data ?? []) as AllowedUser[]) : [];
@@ -77,6 +78,8 @@ export default async function SettingsPage() {
       {isAdmin && (
         <AllowedUsersSection users={allowedUsers} currentUserEmail={userEmail} />
       )}
+
+      <SignOutSection />
     </div>
   );
 }
