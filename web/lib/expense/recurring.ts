@@ -144,12 +144,15 @@ export async function generatePendingExpenses(
       const purchasedAt = new Date(Date.UTC(year, month - 1, day, 0, 0, 0)).toISOString();
 
       // 1) expense_records に親レコード INSERT
+      // store_name には固定費名 (家賃・サブスク名・電力会社名 等) をそのまま採用する。
+      // 旧実装は null だったが、履歴一覧で「店舗名なし」と出てしまい何の支出か分からない
+      // ため、ユーザー要望により固定費名を店舗名として保持する形に変更。
       const { data: rec_, error: recErr } = await supabase
         .from("expense_records")
         .insert({
           user_id: userId,
           purchased_at: purchasedAt,
-          store_name: null,
+          store_name: rec.name,
           total_amount: rec.amount,
           note: rec.note,
           image_paths: [],
