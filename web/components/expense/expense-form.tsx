@@ -60,9 +60,15 @@ export function ExpenseForm(props: Props) {
 
   const [purchasedAt, setPurchasedAt] = useState(initial.purchased_at);
   const [storeName, setStoreName] = useState(initial.store_name ?? "");
-  // 合計金額は入力欄を「空のまま = 明細から自動計算」とする運用。
-  // 編集時の元値は placeholder に出して参考表示し、ユーザーが上書きしたい場合のみ入力する。
-  const [totalAmount, setTotalAmount] = useState<string>("");
+  // 合計金額の初期値:
+  //  - OCR 由来 (initial.total_amount > 0) → そのまま採用 (税込支払額を保持)
+  //  - 編集モード (既存 record の total_amount > 0) → そのまま採用
+  //  - 新規・手入力 (0 のとき) → 空文字のままで品目合計を自動採用 (PR #13 の挙動)
+  // 過去 PR #13 で常時 "" にしていたが、OCR の税込合計が握り潰されるバグが
+  // 出たため initial.total_amount > 0 のときは採用する形に変更。
+  const [totalAmount, setTotalAmount] = useState<string>(
+    Number(initial.total_amount) > 0 ? String(initial.total_amount) : "",
+  );
   const [note, setNote] = useState(initial.note ?? "");
   const [items, setItems] = useState<ExpenseItemInput[]>(
     initial.items.length > 0 ? initial.items : [makeEmptyItem(fallbackCategoryId)],
@@ -182,23 +188,38 @@ export function ExpenseForm(props: Props) {
           </Field>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field
-            label={`合計金額（未入力なら明細から自動: ¥${computedTotal.toLocaleString()}）`}
-          >
-            <input
-              type="number"
-              inputMode="numeric"
-              min={0}
-              value={totalAmount}
-              onChange={(e) => setTotalAmount(e.target.value)}
-              placeholder={
-                props.mode === "edit" && Number(initial.total_amount) > 0
-                  ? `元値: ${Number(initial.total_amount).toLocaleString()}`
-                  : "0"
-              }
-              className={inputCls}
-            />
-          </Field>
+          <div>
+            <Field
+              label={`合計金額（未入力なら明細から自動: ¥${computedTotal.toLocaleString()}）`}
+            >
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                value={totalAmount}
+                onChange={(e) => setTotalAmount(e.target.value)}
+                placeholder={
+                  props.mode === "edit" && Number(initial.total_amount) > 0
+                    ? `元値: ${Number(initial.total_amount).toLocaleString()}`
+                    : "0"
+                }
+                className={inputCls}
+              />
+            </Field>
+            {/* 明細合計と入力された合計の差を補助表示 (両方の値が確認しやすくなる)。
+                差は消費税・値引きの大きさを示す目安となる。 */}
+            {(() => {
+              const entered = Number(totalAmount.trim()) || 0;
+              if (entered <= 0 || entered === computedTotal) return null;
+              const diff = entered - computedTotal;
+              return (
+                <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">
+                  明細合計 ¥{computedTotal.toLocaleString()} / 差 {diff >= 0 ? "+" : ""}¥
+                  {diff.toLocaleString()}（消費税・値引きを含む可能性）
+                </p>
+              );
+            })()}
+          </div>
           <Field label="メモ（任意）">
             <input
               type="text"
