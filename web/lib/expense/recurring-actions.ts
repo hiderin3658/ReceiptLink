@@ -17,14 +17,7 @@ export interface GeneratePendingState {
   message: string;
 }
 
-const INITIAL_STATE: GeneratePendingState = {
-  ok: true,
-  generated: 0,
-  errors: [],
-  message: "",
-};
-
-/** 未計上の固定費を一括生成。dashboard の useFormState 等から呼ばれる前提。 */
+/** 未計上の固定費を一括生成。dashboard の useTransition から呼ばれる前提。 */
 export async function generatePendingExpensesAction(
   _prev: GeneratePendingState | null,
 ): Promise<GeneratePendingState> {
@@ -65,5 +58,3 @@ export async function generatePendingExpensesAction(
         : `固定費 ${result.generated} 件を計上しました`,
   };
 }
-
-export const initialGeneratePendingState = INITIAL_STATE;
