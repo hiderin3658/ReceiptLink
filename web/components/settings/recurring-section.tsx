@@ -113,7 +113,7 @@ export function RecurringSection({ recurring, categories }: Props) {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5 text-sm font-medium">
                     <Repeat size={12} className="shrink-0 text-[var(--color-muted-foreground)]" aria-hidden />
-                    <span className="truncate">{r.name}</span>
+                    <span className="break-words">{r.name}</span>
                     {!r.active && (
                       <span className="rounded bg-[var(--color-muted)] px-1.5 py-0.5 text-xs">停止中</span>
                     )}
