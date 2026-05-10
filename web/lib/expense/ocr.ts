@@ -6,6 +6,7 @@
 
 import type { ExpenseCategory, ExpenseSource } from "@/types/database";
 import { mapCategoryHintToId } from "./categories";
+import { normalizePurchasedAt } from "./date-utils";
 import type { ExpenseItemInput, ExpenseRecordInput } from "./schema";
 
 /** extract-receipt のレスポンス形（Edge Function 側 types.ts と整合させる） */
@@ -63,7 +64,10 @@ export function ocrToExpenseInput(
   const total_amount = Math.max(0, Math.round(ocr.total_amount));
 
   return {
-    purchased_at: ocr.purchased_at,
+    // OCR の purchased_at は時刻付き ISO 8601 / スラッシュ区切り / 和暦等
+    // 様々なフォーマットで返ってくる可能性があるため、<input type="date"> が
+    // 受け付ける YYYY-MM-DD に正規化する。詳細は date-utils.ts を参照。
+    purchased_at: normalizePurchasedAt(ocr.purchased_at),
     store_name: ocr.store_name ?? "",
     total_amount,
     note:
