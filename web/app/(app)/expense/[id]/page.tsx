@@ -70,7 +70,14 @@ export default async function ExpenseDetailPage({
       )}
 
       <section className="space-y-2">
-        <h2 className="text-sm font-semibold">明細（{items.length} 件）</h2>
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-sm font-semibold">明細（{items.length} 件）</h2>
+          {record.source_type === "receipt" && (
+            <span className="text-xs text-[var(--color-muted-foreground)]">
+              ※ 品目はレシート通りに表示。合計には消費税・値引きが含まれます
+            </span>
+          )}
+        </div>
         <ul className="rounded-lg border border-[var(--color-border)] bg-white">
           {items.map((it, idx) => (
             <li

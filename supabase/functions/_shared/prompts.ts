@@ -46,10 +46,15 @@ export function buildReceiptOcrPrompt(input: BuildReceiptOcrPromptInput = {}): P
   - raw_name: 商品名そのまま
   - quantity: 数量（無ければ null）
   - unit: 単位（個 / g / パック など、無ければ null）
-  - total_price: 値引き前の小計（円、整数）
+  - total_price: レシート記載通りの単品価格（円、整数）。**換算しないこと**:
+    - 税抜表示のレシート → 税抜価格をそのまま
+    - 税込表示のレシート → 税込価格をそのまま
+    - 消費税分や全体値引きを按分しない
   - category_hint: 以下のカテゴリ名から最も近いもの 1 つ → ${categoriesList}
 - 値引き (discounts): クーポン・割引の項目（label と amount）。無ければ空配列。
-- 合計金額 (total_amount): 値引き後の支払額（円、整数）
+- 合計金額 (total_amount): **必ず税込の最終支払額**（円、整数）。
+  レシート末尾の「合計」「お支払い」「お預かり」直前の支払額を採用。
+  消費税・値引きをすべて加減算した後の、ユーザーが実際に支払った金額。
 - 店舗カテゴリヒント (store_category_hint): 以下から推定 → ${storeCatList}。判定不能なら "other"
 - 信頼度 (confidence): 0.0〜1.0。読み取りの自信度。
 
@@ -58,6 +63,11 @@ export function buildReceiptOcrPrompt(input: BuildReceiptOcrPromptInput = {}): P
 - category_hint は商品の用途で判定する（例: 野菜・肉・調味料 → "食費"、シャンプー・電池 → "日用品"）。
 - 数量が明記されていない場合は null を返す（推測しない）。
 - 通貨記号（¥）やカンマ（1,500）は除去して整数値に変換すること。
+- **価格の方針 (重要)**:
+  - 各品目 (items[].total_price) は **レシート記載のままの価格を採用** する。
+    税抜・税込どちらかに揃えようとしない。換算もしない。
+  - これは家計簿として「品目はレシート通り」「合計は実支払額 (税込)」という
+    シンプルな運用とするため。両者の差は消費税や値引きを反映する。
 - 出力は必ず指定スキーマの JSON のみ。前置き・解説・コードブロックは付けないこと。`;
 
   const userParts: string[] = [
