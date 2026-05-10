@@ -46,9 +46,10 @@ function parseMonthStart(s: string): { year: number; month: number } {
  *
  *  挙動:
  *  - active = false の場合は空配列
- *  - last_generated_month が null（初回）の場合は created_at の翌月から当月まで
- *    （※ 過去全て遡るのではなく「テンプレ作成後」の月から計上開始）
- *  - last_generated_month がある場合は、その翌月から当月まで
+ *  - last_generated_month が null（初回）の場合は created_at の **当月** から当月まで
+ *    （月初〜中旬に追加した固定費の当月分も計上対象に含めるため。
+ *      過去全て遡るのではなく「テンプレ作成後」の月から計上開始）
+ *  - last_generated_month がある場合は、その翌月から当月まで（重複防止）
  *
  *  返り値の各要素は YYYY-MM-01 形式の文字列。古い順。
  */
