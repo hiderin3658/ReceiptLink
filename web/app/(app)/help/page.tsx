@@ -61,6 +61,11 @@ export default function HelpPage() {
               よくある質問 (FAQ)
             </a>
           </li>
+          <li>
+            <a href="#privacy" className="text-[var(--color-primary)] hover:underline">
+              データの取り扱いについて
+            </a>
+          </li>
         </ol>
       </nav>
 
@@ -245,6 +250,80 @@ export default function HelpPage() {
             「ログアウト」ボタンがあります。
           </p>
         </FaqItem>
+      </Section>
+
+      {/* 8. プライバシー / データの取り扱い */}
+      <Section id="privacy" title="8. データの取り扱いについて">
+        <p>
+          ReceiptLink で扱うデータと送信先を明記します。本アプリは
+          個人開発のため、データは以下の外部サービスに保存・送信されます。
+        </p>
+
+        <h3 className="mt-3 text-sm font-semibold">8-1. 保存されるデータ</h3>
+        <ul className="ml-5 list-disc space-y-1">
+          <li>
+            <strong>支出履歴・固定費・カテゴリ等の入力データ</strong>:
+            Supabase (PostgreSQL データベース) に保存
+          </li>
+          <li>
+            <strong>レシート画像</strong>: Supabase Storage に保存
+          </li>
+          <li>
+            <strong>認証情報</strong>: Google アカウントの email・表示名・プロフィール画像 URL
+            を Supabase Auth が保持
+          </li>
+        </ul>
+
+        <h3 className="mt-3 text-sm font-semibold">8-2. データの保存場所</h3>
+        <ul className="ml-5 list-disc space-y-1">
+          <li>
+            <strong>Supabase Cloud</strong> (AWS, Northeast Asia リージョン)
+            にデータが保管されます
+          </li>
+          <li>
+            ユーザーごとに <strong>RLS (Row Level Security)</strong> が有効で、
+            自分以外のデータにはアクセスできません
+          </li>
+        </ul>
+
+        <h3 className="mt-3 text-sm font-semibold">8-3. 外部 API への送信</h3>
+        <ul className="ml-5 list-disc space-y-1">
+          <li>
+            レシート OCR を実行する際に、レシート画像を <strong>Google Gemini API</strong>
+            に送信します
+          </li>
+          <li>
+            送信は OCR ボタンを押した時のみ。手入力ではこの送信は発生しません
+          </li>
+          <li>
+            Gemini API の利用ポリシーは{" "}
+            <a
+              href="https://ai.google.dev/gemini-api/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[var(--color-primary)] hover:underline"
+            >
+              Google AI 利用規約
+            </a>
+            に準じます
+          </li>
+        </ul>
+
+        <h3 className="mt-3 text-sm font-semibold">8-4. データの削除</h3>
+        <ul className="ml-5 list-disc space-y-1">
+          <li>
+            支出履歴は詳細画面の「削除」から個別に削除できます
+          </li>
+          <li>
+            アカウント全体の削除を希望する場合は、管理者に連絡してください
+          </li>
+        </ul>
+
+        <h3 className="mt-3 text-sm font-semibold">8-5. 利用範囲</h3>
+        <p>
+          本アプリは <strong>限定公開 (ホワイトリストに登録された Google アカウントのみ利用可)</strong>
+          です。第三者にログイン情報を共有しないでください。
+        </p>
       </Section>
 
       {/* フッター */}
