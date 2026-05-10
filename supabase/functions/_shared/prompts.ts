@@ -46,7 +46,8 @@ export function buildReceiptOcrPrompt(input: BuildReceiptOcrPromptInput = {}): P
   - raw_name: 商品名そのまま
   - quantity: 数量（無ければ null）
   - unit: 単位（個 / g / パック など、無ければ null）
-  - total_price: 値引き前の小計（円、整数）
+  - total_price: 値引き前の小計（円、整数、**必ず税込価格**）
+  - tax_rate: 8 (軽減税率対象) または 10 (標準税率)
   - category_hint: 以下のカテゴリ名から最も近いもの 1 つ → ${categoriesList}
 - 値引き (discounts): クーポン・割引の項目（label と amount）。無ければ空配列。
 - 合計金額 (total_amount): 値引き後の支払額（円、整数）
@@ -58,6 +59,13 @@ export function buildReceiptOcrPrompt(input: BuildReceiptOcrPromptInput = {}): P
 - category_hint は商品の用途で判定する（例: 野菜・肉・調味料 → "食費"、シャンプー・電池 → "日用品"）。
 - 数量が明記されていない場合は null を返す（推測しない）。
 - 通貨記号（¥）やカンマ（1,500）は除去して整数値に変換すること。
+- **税込価格と税率の判定ルール（重要）**:
+  - 各品目の total_price は **必ず税込価格** を返すこと。
+  - レシートが税込表示（内税 / 「税込」表記 / 各品目欄に支払い額相当が並ぶ形式）の場合は、その値をそのまま採用する。
+  - レシートが税抜表示（外税 / 「税抜」表記 / 末尾で消費税が別合算される形式）の場合は、tax_rate に応じて掛け算して税込換算する（例: 税抜 100 円 × 1.08 = 108 円、税抜 100 円 × 1.10 = 110 円）。1 円未満は四捨五入。
+  - 端数処理で全品目合計と total_amount が 1〜数円ズレるのは正常。
+  - 軽減税率対象品目の判定: ※ や * などのマーク、または「軽減」の凡例で示されることが多い。食品・飲料（酒類除く）・新聞などが該当。判定できれば tax_rate=8、それ以外は tax_rate=10。
+  - インボイス記載のないレシート等で税率が完全に不明な場合は tax_rate=10 をデフォルトとする。
 - 出力は必ず指定スキーマの JSON のみ。前置き・解説・コードブロックは付けないこと。`;
 
   const userParts: string[] = [

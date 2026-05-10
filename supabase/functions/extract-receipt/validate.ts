@@ -87,6 +87,10 @@ function validateItem(raw: unknown, idx: number): OcrItem {
     );
   }
 
+  // tax_rate は 8 or 10。範囲外/不正値は 10 (標準税率) にフォールバック。
+  // インボイス制度未対応レシートやマーク不鮮明な場合の安全側挙動。
+  const tax_rate: 8 | 10 = toInt(r.tax_rate) === 8 ? 8 : 10;
+
   // category_hint は標準カテゴリ名と厳密に一致するか、null
   const hintRaw = typeof r.category_hint === "string" ? r.category_hint.trim() : null;
   const category_hint = hintRaw && VALID_CATEGORY_HINTS.has(hintRaw) ? hintRaw : null;
@@ -96,6 +100,7 @@ function validateItem(raw: unknown, idx: number): OcrItem {
     quantity: toNum(r.quantity),
     unit: asString(r.unit),
     total_price: total_price_int,
+    tax_rate,
     category_hint,
   };
 }

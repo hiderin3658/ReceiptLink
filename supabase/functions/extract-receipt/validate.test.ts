@@ -35,6 +35,8 @@ describe("validateOcrResult", () => {
     expect(out.items).toHaveLength(1);
     expect(out.items[0]!.raw_name).toBe("玉ねぎ");
     expect(out.items[0]!.category_hint).toBe("食費");
+    // tax_rate 未指定なので 10 にフォールバック
+    expect(out.items[0]!.tax_rate).toBe(10);
     expect(out.discounts).toEqual([]);
     expect(out.confidence).toBeCloseTo(0.92, 2);
     expect(out.store_category_hint).toBe("supermarket");
@@ -110,6 +112,40 @@ describe("validateOcrResult", () => {
       items: [{ ...validBase.items[0]!, category_hint: "imaginary" }],
     });
     expect(out.items[0]!.category_hint).toBeNull();
+  });
+
+  it("tax_rate=8 が指定されたらそのまま採用", () => {
+    const out = validateOcrResult({
+      ...validBase,
+      items: [{ ...validBase.items[0]!, tax_rate: 8 }],
+    });
+    expect(out.items[0]!.tax_rate).toBe(8);
+  });
+
+  it("tax_rate=10 が指定されたらそのまま採用", () => {
+    const out = validateOcrResult({
+      ...validBase,
+      items: [{ ...validBase.items[0]!, tax_rate: 10 }],
+    });
+    expect(out.items[0]!.tax_rate).toBe(10);
+  });
+
+  it("tax_rate が文字列 '8' でも 8 として採用", () => {
+    const out = validateOcrResult({
+      ...validBase,
+      items: [{ ...validBase.items[0]!, tax_rate: "8" }],
+    });
+    expect(out.items[0]!.tax_rate).toBe(8);
+  });
+
+  it("tax_rate が想定外 (0 / 5 / 12 / null / 文字列) なら 10 にフォールバック", () => {
+    for (const value of [0, 5, 12, null, "abc", undefined]) {
+      const out = validateOcrResult({
+        ...validBase,
+        items: [{ ...validBase.items[0]!, tax_rate: value }],
+      });
+      expect(out.items[0]!.tax_rate).toBe(10);
+    }
   });
 
   it("category_hint 未指定は null", () => {

@@ -49,7 +49,12 @@ export interface OcrItem {
   raw_name: string;
   quantity: number | null;
   unit: string | null;
+  /** 税込価格（円、整数）。レシートが税抜表示の場合 Gemini が tax_rate で換算した結果。
+   *  各品目の合計と OcrResult.total_amount が概ね一致する前提。 */
   total_price: number;
+  /** 適用税率（8 = 軽減税率対象 / 10 = 標準税率）。判別不能なら 10 にフォールバック。
+   *  ※マークや「軽減」の凡例から Gemini が判定する。 */
+  tax_rate: 8 | 10;
   /** Gemini が推定したカテゴリ名（例: "食費" / "日用品"）。クライアント側で
    *  expense_categories.name と完全一致照合し、外れたら「その他」にフォールバック */
   category_hint: string | null;

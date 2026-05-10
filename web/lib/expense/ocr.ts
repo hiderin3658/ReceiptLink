@@ -14,7 +14,10 @@ export interface OcrItem {
   raw_name: string;
   quantity: number | null;
   unit: string | null;
+  /** 税込価格（円、整数）。Edge Function 側で税抜表示なら換算済み。 */
   total_price: number;
+  /** 適用税率（8 = 軽減 / 10 = 標準）。判定不能時は 10 にフォールバック。 */
+  tax_rate: 8 | 10;
   /** Gemini が推定したカテゴリ名（標準カテゴリ名と一致しなければフォールバック） */
   category_hint: string | null;
 }
