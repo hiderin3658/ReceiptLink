@@ -98,6 +98,18 @@ export function ExpenseForm(props: Props) {
     e.preventDefault();
     setError(null);
 
+    // 値引 > 金額 の行があると DB CHECK で阻止され「保存に失敗しました」しか表示されない。
+    // ユーザーが原因を特定できるよう、submit 前にローカルで検出して具体メッセージを出す。
+    const overRow = items.findIndex(
+      (it) => Number(it.discount ?? 0) > Number(it.total_price ?? 0),
+    );
+    if (overRow !== -1) {
+      setError(
+        `${overRow + 1} 行目: 値引額が金額を超えています。値引は金額以下にしてください`,
+      );
+      return;
+    }
+
     const payload: ExpenseRecordInput = {
       purchased_at: purchasedAt,
       store_name: storeName,

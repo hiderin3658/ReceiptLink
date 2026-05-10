@@ -76,7 +76,8 @@ export function buildExpenseCsv(
   for (const rec of records) {
     const items = rec.expense_items ?? [];
     const recordHeader = {
-      purchased_at: rec.purchased_at,
+      // timestamptz の ISO 8601 をそのまま出すと Excel で読みにくいので YYYY-MM-DD に整形
+      purchased_at: rec.purchased_at.slice(0, 10),
       store_name: rec.store_name ?? "",
       source: SOURCE_LABEL[rec.source_type],
       total_amount: rec.total_amount,
