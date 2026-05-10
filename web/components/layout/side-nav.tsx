@@ -1,19 +1,27 @@
 "use client";
 
 import Link from "next/link";
+import type { Route } from "next";
 import { usePathname } from "next/navigation";
-import { Home, Receipt, Plus, BarChart3, Settings } from "lucide-react";
+import { Home, Receipt, Plus, BarChart3, Settings, HelpCircle } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ホワイトリスト管理 (admin only) は /settings ページ内で表示する設計のため、
 // 専用 /admin ナビは持たない。
-const NAV_ITEMS = [
+//
+// typedRoutes 対応: href を Route 型に明示することで、要素ごとに union 型に
+// 推論されるのを防ぎ、Link 側の型と整合させる。
+const NAV_ITEMS: ReadonlyArray<{ href: Route; label: string; icon: LucideIcon }> = [
   { href: "/dashboard", label: "ホーム", icon: Home },
   { href: "/expense", label: "履歴", icon: Receipt },
   { href: "/expense/new", label: "追加", icon: Plus },
   { href: "/reports", label: "レポート", icon: BarChart3 },
   { href: "/settings", label: "設定", icon: Settings },
-] as const;
+  // ヘルプはサイドナビにも追加 (デスクトップのみ表示)。ボトムナビは 5 項目で
+  // 限界のため未追加 → モバイルは設定画面末尾のリンクからアクセスする想定。
+  { href: "/help", label: "ヘルプ", icon: HelpCircle },
+];
 
 export function SideNav() {
   const pathname = usePathname();
