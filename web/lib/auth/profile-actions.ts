@@ -16,15 +16,6 @@ const inputSchema = z.object({
     .max(50, "表示名は 50 文字以内")
     .optional()
     .transform((v) => (v && v.length > 0 ? v : null)),
-  birth_year: z
-    .union([z.number(), z.string(), z.null()])
-    .transform((v) => {
-      if (v === null || v === "" || v === undefined) return null;
-      if (typeof v === "number") return v;
-      const n = Number(v);
-      return Number.isFinite(n) ? n : NaN;
-    })
-    .pipe(z.number().int().min(1900).max(new Date().getFullYear()).nullable()),
 });
 
 export type ProfileInput = z.input<typeof inputSchema>;
