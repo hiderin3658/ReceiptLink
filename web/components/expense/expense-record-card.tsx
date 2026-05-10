@@ -20,7 +20,7 @@ export function ExpenseRecordCard({ record }: { record: ExpenseRecord }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <Icon size={14} className="shrink-0 text-[var(--color-muted-foreground)]" aria-hidden />
-          <span className="truncate text-sm font-medium">
+          <span className="text-sm font-medium break-words">
             {record.store_name ?? "店舗名なし"}
           </span>
         </div>

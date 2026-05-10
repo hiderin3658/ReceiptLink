@@ -74,9 +74,9 @@ export function AllowedUsersSection({ users, currentUserEmail }: Props) {
             className="flex items-center gap-2 rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm"
           >
             <div className="min-w-0 flex-1">
-              <span className="block truncate font-medium">{u.email}</span>
+              <span className="block break-all font-medium">{u.email}</span>
               {u.note && (
-                <span className="block truncate text-xs text-[var(--color-muted-foreground)]">
+                <span className="block break-words text-xs text-[var(--color-muted-foreground)]">
                   {u.note}
                 </span>
               )}

@@ -40,9 +40,9 @@ export default async function ExpenseDetailPage({
           <ArrowLeft size={14} aria-hidden />
           支出一覧へ戻る
         </Link>
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <h1 className="text-2xl font-bold">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-2xl font-bold break-words">
               {record.store_name ?? "店舗名なし"}
             </h1>
             <p className="text-sm text-[var(--color-muted-foreground)]">
@@ -50,7 +50,7 @@ export default async function ExpenseDetailPage({
               {" ・ "}{SOURCE_LABEL[record.source_type]}
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex shrink-0 gap-2">
             <Link
               href={`/expense/${record.id}/edit`}
               className="flex items-center gap-1 rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm hover:bg-[var(--color-muted)]"
@@ -87,8 +87,10 @@ export default async function ExpenseDetailPage({
               }
             >
               <div className="flex items-baseline justify-between gap-2">
-                <span className="font-medium">{it.display_name ?? it.raw_name}</span>
-                <span className="font-semibold tabular-nums">
+                <span className="min-w-0 flex-1 font-medium break-words">
+                  {it.display_name ?? it.raw_name}
+                </span>
+                <span className="shrink-0 font-semibold tabular-nums">
                   ¥{it.total_price.toLocaleString()}
                   {it.discount > 0 && (
                     <span className="ml-1 text-xs text-[var(--color-muted-foreground)]">
