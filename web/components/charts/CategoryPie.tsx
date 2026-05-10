@@ -54,8 +54,13 @@ export function CategoryPie({ data }: Props) {
           dataKey="value"
           nameKey="name"
           cx="50%"
-          cy="50%"
-          outerRadius={90}
+          cy="45%"
+          // 親コンテナの最小辺に対する % で半径を決める。
+          // 本番ビルドで Recharts のアニメーション初期状態 (outerRadius=0) が
+          // 残り続けて円が線状に潰れる事象が出ていたため固定 px から % に変更。
+          outerRadius="70%"
+          // 上記アニメーションを無効化して常に最終形で描画する。
+          isAnimationActive={false}
           labelLine={false}
         >
           {data.map((entry, idx) => (
