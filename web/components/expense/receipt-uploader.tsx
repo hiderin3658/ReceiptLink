@@ -14,13 +14,25 @@
 
 import { useRef, useState } from "react";
 import { Camera, Image as ImageIcon, Loader2, AlertCircle, RefreshCw } from "lucide-react";
+import imageCompression from "browser-image-compression";
 import { createClient } from "@/lib/supabase/client";
 import {
   generateImageFileName,
   type OcrResult,
 } from "@/lib/expense/ocr";
 
-type Status = "idle" | "uploading" | "extracting" | "error";
+type Status = "idle" | "compressing" | "uploading" | "extracting" | "error";
+
+// 撮影直後の高解像度画像 (8〜12MB / 4000×3000px 級) はモバイル端末の Chrome で
+// メモリ不足になりやすい。撮影/選択時にクライアント側でリサイズ・圧縮することで
+// メモリ・帯域・Storage 容量・OCR 前処理時間すべてを削減する。
+// OCR 精度は長辺 1600px / JPEG q≈0.85 でレシート文字判別に十分。
+const COMPRESSION_OPTIONS = {
+  maxSizeMB: 1,
+  maxWidthOrHeight: 1600,
+  useWebWorker: true,
+  fileType: "image/jpeg",
+} as const;
 
 interface Props {
   /** OCR 成功時。imagePath は Storage 内の "<userId>/<uuid>.<ext>" 形式 */
@@ -37,17 +49,29 @@ export function ReceiptUploader({ onResult }: Props) {
   const [status, setStatus] = useState<Status>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  function handleSelectFile(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleSelectFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
     if (!f.type.startsWith("image/")) {
       setErrorMessage("画像ファイルを選択してください");
       return;
     }
-    setFile(f);
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setPreviewUrl(URL.createObjectURL(f));
+
     setErrorMessage(null);
+    setStatus("compressing");
+
+    // 圧縮失敗時は元ファイルにフォールバックしてフローを止めない (Storage 側で
+    // 受け付けられる可能性は残る)。失敗ログは console.warn のみ。
+    let processed: File = f;
+    try {
+      processed = await imageCompression(f, COMPRESSION_OPTIONS);
+    } catch (err) {
+      console.warn("[receipt-uploader] image compression failed:", err);
+    }
+
+    setFile(processed);
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(URL.createObjectURL(processed));
     setStatus("idle");
   }
 
@@ -127,6 +151,12 @@ export function ReceiptUploader({ onResult }: Props) {
       </div>
 
       {!file ? (
+        status === "compressing" ? (
+          <div className="flex items-center justify-center gap-2 rounded-md border border-dashed border-[var(--color-border)] bg-[var(--color-muted)] p-6 text-sm text-[var(--color-muted-foreground)]">
+            <Loader2 size={16} className="animate-spin" aria-hidden />
+            画像を最適化中...
+          </div>
+        ) : (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {/* カメラで撮影 (capture="environment" でその場撮影が起動) */}
           <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed border-[var(--color-border)] bg-[var(--color-muted)] p-6 text-sm hover:bg-[color-mix(in_oklch,var(--color-muted)_50%,white)]">
@@ -154,6 +184,7 @@ export function ReceiptUploader({ onResult }: Props) {
             />
           </label>
         </div>
+        )
       ) : (
         <div className="space-y-3">
           {previewUrl && (
