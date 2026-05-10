@@ -153,30 +153,28 @@ describe("categoryBreakdown", () => {
 });
 
 describe("paceForMonth", () => {
-  it("月初は paceProjection も 0 ではなく日割り計算が動く", () => {
+  it("月初の経過日数 / 総日数を返す", () => {
     const today = new Date(2026, 4, 1); // 2026-05-01
     const out = paceForMonth(0, today);
     expect(out.actualToDate).toBe(0);
     expect(out.elapsedDays).toBe(1);
     expect(out.daysInMonth).toBe(31);
-    expect(out.paceProjection).toBe(0);
   });
 
-  it("月の中盤で日割り計算", () => {
+  it("月の中盤", () => {
     const today = new Date(2026, 4, 15); // 2026-05-15
     const out = paceForMonth(15000, today);
-    // 15000 / 15 * 31 = 31000
+    expect(out.actualToDate).toBe(15000);
     expect(out.elapsedDays).toBe(15);
     expect(out.daysInMonth).toBe(31);
-    expect(out.paceProjection).toBe(31000);
   });
 
-  it("月末ぴったりは pace = actual", () => {
+  it("月末日 (4 月 30 日)", () => {
     const today = new Date(2026, 3, 30); // 2026-04-30 (4月は30日)
     const out = paceForMonth(30000, today);
+    expect(out.actualToDate).toBe(30000);
     expect(out.elapsedDays).toBe(30);
     expect(out.daysInMonth).toBe(30);
-    expect(out.paceProjection).toBe(30000);
   });
 });
 

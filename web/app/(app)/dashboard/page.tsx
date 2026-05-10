@@ -3,7 +3,7 @@
 // 設計書: docs/design.md §5 / §8
 
 import Link from "next/link";
-import { Plus, Receipt, TrendingUp, Settings as SettingsIcon } from "lucide-react";
+import { Plus, Receipt, Settings as SettingsIcon } from "lucide-react";
 import { CategoryPie, type CategoryPieDatum } from "@/components/charts/CategoryPie";
 import { PendingRecurringAlert, NoRecurringHint } from "@/components/expense/pending-recurring-alert";
 import { loadDashboardData } from "@/lib/expense/dashboard-queries";
@@ -40,8 +40,8 @@ export default async function DashboardPage() {
         <NoRecurringHint />
       )}
 
-      {/* 今月の合計 + ペース */}
-      <section className="grid gap-3 sm:grid-cols-2">
+      {/* 今月の合計 (固定費の有無で精度がブレる「月末ペース予想」はユーザー要望により非表示) */}
+      <section>
         <div className="rounded-lg border border-[var(--color-border)] bg-white p-4">
           <p className="text-xs text-[var(--color-muted-foreground)]">今月の合計</p>
           <p className="mt-1 text-3xl font-bold tabular-nums">
@@ -49,18 +49,6 @@ export default async function DashboardPage() {
           </p>
           <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">
             {data.pace.elapsedDays} 日 / {data.pace.daysInMonth} 日 経過
-          </p>
-        </div>
-        <div className="rounded-lg border border-[var(--color-border)] bg-white p-4">
-          <div className="flex items-center gap-1.5 text-xs text-[var(--color-muted-foreground)]">
-            <TrendingUp size={12} aria-hidden />
-            月末ペース予想
-          </div>
-          <p className="mt-1 text-3xl font-bold tabular-nums">
-            ¥{data.pace.paceProjection.toLocaleString()}
-          </p>
-          <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">
-            日割り平均 × {data.pace.daysInMonth} 日
           </p>
         </div>
       </section>

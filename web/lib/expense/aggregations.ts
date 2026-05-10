@@ -35,8 +35,6 @@ export type PaceResult = {
   elapsedDays: number;
   /** 月の総日数 */
   daysInMonth: number;
-  /** ペース推計（経過日数の日割り平均 × 月日数）。月初など経過 0 日なら 0 */
-  paceProjection: number;
 };
 
 // =====================================================================
@@ -119,7 +117,9 @@ export function categoryBreakdown(
 // 今日までのペース計算
 // =====================================================================
 
-/** 今日までの実績合計と、日割り平均からの月末予想を計算 */
+/** 今日までの実績合計 + 経過/総日数を返す。
+ *  以前は paceProjection (日割り月末予想) も返していたが、固定費混在による
+ *  精度ブレでユーザー UX が悪かったため UI ごと削除し、関数側もシンプル化した。 */
 export function paceForMonth(
   monthlyTotalAmount: number,
   today: Date,
@@ -128,13 +128,10 @@ export function paceForMonth(
   const month = today.getMonth(); // 0-indexed
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const elapsedDays = today.getDate();
-  const paceProjection =
-    elapsedDays > 0 ? Math.round((monthlyTotalAmount / elapsedDays) * daysInMonth) : 0;
   return {
     actualToDate: monthlyTotalAmount,
     elapsedDays,
     daysInMonth,
-    paceProjection,
   };
 }
 
