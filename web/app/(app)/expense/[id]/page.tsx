@@ -70,11 +70,11 @@ export default async function ExpenseDetailPage({
       )}
 
       <section className="space-y-2">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-sm font-semibold">明細（{items.length} 件）</h2>
           {record.source_type === "receipt" && (
             <span className="text-xs text-[var(--color-muted-foreground)]">
-              ※ 各品目はレシート記載通り (税抜・税込はレシート表示に依存)。合計は税込支払額です
+              ※ 品目はレシート通りに表示。合計には消費税・値引きが含まれます
             </span>
           )}
         </div>
