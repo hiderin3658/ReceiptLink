@@ -3,6 +3,7 @@
 // 設計書: docs/design.md §5 / §8
 
 import Link from "next/link";
+import type { Route } from "next";
 import { Download, ChevronLeft, ChevronRight, TrendingUp, TrendingDown } from "lucide-react";
 import { CategoryPie, type CategoryPieDatum } from "@/components/charts/CategoryPie";
 import { MonthlyBar } from "@/components/charts/MonthlyBar";
@@ -146,9 +147,11 @@ export default async function ReportsPage({
 }
 
 function RangeLink({ ym, months, active }: { ym: string; months: number; active: boolean }) {
+  // 同 pathname で months クエリだけ変更すると Next.js が遷移をスキップする問題を回避するため、
+  // object href ではなく文字列 href を使う。typedRoutes でも path 部分が固定なら許容される。
   return (
     <Link
-      href={{ pathname: "/reports", query: { ym, months: String(months) } }}
+      href={`/reports?ym=${encodeURIComponent(ym)}&months=${months}` as Route}
       className={
         "rounded-md border border-[var(--color-border)] px-2 py-1 " +
         (active

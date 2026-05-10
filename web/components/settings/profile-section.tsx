@@ -16,9 +16,21 @@ export function ProfileSection({ initial }: Props) {
   const [pending, startTransition] = useTransition();
   const [feedback, setFeedback] = useState<ProfileActionState>(null);
 
+  const currentYear = new Date().getFullYear();
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFeedback(null);
+    if (birthYear !== "") {
+      const n = Number(birthYear);
+      if (!Number.isInteger(n) || n < 1900 || n > currentYear) {
+        setFeedback({
+          ok: false,
+          message: `生年は 1900 〜 ${currentYear} の範囲で入力してください`,
+        });
+        return;
+      }
+    }
     startTransition(async () => {
       const result = await updateProfile(null, {
         display_name: displayName,
@@ -49,9 +61,17 @@ export function ProfileSection({ initial }: Props) {
             type="number"
             inputMode="numeric"
             min={1900}
-            max={new Date().getFullYear()}
+            max={currentYear}
             value={birthYear}
             onChange={(e) => setBirthYear(e.target.value)}
+            onInvalid={(e) => {
+              // HTML5 制約違反 (min/max 範囲外) でも UI 上に理由を出す
+              e.preventDefault();
+              setFeedback({
+                ok: false,
+                message: `生年は 1900 〜 ${currentYear} の範囲で入力してください`,
+              });
+            }}
             placeholder="例: 1990"
             className="w-40 rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm"
           />
