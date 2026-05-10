@@ -60,9 +60,9 @@ export function ExpenseForm(props: Props) {
 
   const [purchasedAt, setPurchasedAt] = useState(initial.purchased_at);
   const [storeName, setStoreName] = useState(initial.store_name ?? "");
-  const [totalAmount, setTotalAmount] = useState<string>(
-    String(initial.total_amount ?? 0),
-  );
+  // 合計金額は入力欄を「空のまま = 明細から自動計算」とする運用。
+  // 編集時の元値は placeholder に出して参考表示し、ユーザーが上書きしたい場合のみ入力する。
+  const [totalAmount, setTotalAmount] = useState<string>("");
   const [note, setNote] = useState(initial.note ?? "");
   const [items, setItems] = useState<ExpenseItemInput[]>(
     initial.items.length > 0 ? initial.items : [makeEmptyItem(fallbackCategoryId)],
@@ -98,10 +98,14 @@ export function ExpenseForm(props: Props) {
     e.preventDefault();
     setError(null);
 
+    // 入力欄が空なら明細合計を採用（ラベルの「未入力なら明細から自動」仕様）
+    const trimmedTotal = totalAmount.trim();
+    const resolvedTotal = trimmedTotal === "" ? computedTotal : Number(trimmedTotal) || 0;
+
     const payload: ExpenseRecordInput = {
       purchased_at: purchasedAt,
       store_name: storeName,
-      total_amount: Number(totalAmount) || 0,
+      total_amount: resolvedTotal,
       note,
       source_type: sourceType,
       image_paths: imagePaths,
@@ -175,7 +179,11 @@ export function ExpenseForm(props: Props) {
               min={0}
               value={totalAmount}
               onChange={(e) => setTotalAmount(e.target.value)}
-              placeholder="0"
+              placeholder={
+                props.mode === "edit" && Number(initial.total_amount) > 0
+                  ? `元値: ${Number(initial.total_amount).toLocaleString()}`
+                  : "0"
+              }
               className={inputCls}
             />
           </Field>

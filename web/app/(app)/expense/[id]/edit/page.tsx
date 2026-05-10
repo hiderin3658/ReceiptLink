@@ -23,7 +23,9 @@ export default async function EditExpensePage({
   }
 
   const initial: ExpenseRecordInput = {
-    purchased_at: record.purchased_at,
+    // record.purchased_at は timestamptz の ISO 8601 文字列。
+    // <input type="date"> は YYYY-MM-DD のみ受け付けるため日付部分のみ抽出する。
+    purchased_at: record.purchased_at.slice(0, 10),
     store_name: record.store_name ?? "",
     total_amount: record.total_amount,
     note: record.note ?? "",
