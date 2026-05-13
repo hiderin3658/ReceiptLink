@@ -136,11 +136,11 @@ describe("buildExpenseCsv", () => {
     expect(out).toBe(EXPENSE_CSV_HEADERS.join(","));
   });
 
-  it("ヘッダーが先頭行で 14 列ある", () => {
+  it("ヘッダーが先頭行で 12 列ある（数量・単位は UI 非表示方針で削除済み）", () => {
     const out = buildExpenseCsv([sampleRecord], categoryNameById);
     const lines = out.split("\r\n");
     expect(lines[0]).toBe(EXPENSE_CSV_HEADERS.join(","));
-    expect(lines[0]!.split(",")).toHaveLength(14);
+    expect(lines[0]!.split(",")).toHaveLength(12);
   });
 
   it("明細ごとに 1 行ずつ出力（同じ record の情報は繰り返し）", () => {

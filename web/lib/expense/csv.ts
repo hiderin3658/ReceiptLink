@@ -18,8 +18,6 @@ export const EXPENSE_CSV_HEADERS = [
   "品名",
   "表示名",
   "カテゴリ",
-  "数量",
-  "単位",
   "単価",
   "金額",
   "値引額",
@@ -95,13 +93,11 @@ export function buildExpenseCsv(
           escapeCsvCell(recordHeader.total_amount),
           escapeCsvCell(recordHeader.discount_total),
           "", // 品名
-          "",
-          "",
-          "",
-          "",
-          "",
-          "",
-          "",
+          "", // 表示名
+          "", // カテゴリ
+          "", // 単価
+          "", // 金額
+          "", // 値引額
           escapeCsvCell(recordHeader.note),
         ].join(","),
       );
@@ -119,8 +115,6 @@ export function buildExpenseCsv(
           escapeCsvCell(it.raw_name),
           escapeCsvCell(it.display_name ?? ""),
           escapeCsvCell(categoryNameById.get(it.category_id) ?? "(削除済み)"),
-          escapeCsvCell(it.quantity ?? ""),
-          escapeCsvCell(it.unit ?? ""),
           escapeCsvCell(it.unit_price ?? ""),
           escapeCsvCell(it.total_price),
           escapeCsvCell(it.discount),

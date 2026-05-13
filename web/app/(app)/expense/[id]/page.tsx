@@ -101,13 +101,7 @@ export default async function ExpenseDetailPage({
               </div>
               <div className="mt-0.5 text-xs text-[var(--color-muted-foreground)]">
                 {categoryNameById.get(it.category_id) ?? "(削除済み)"}
-                {it.quantity != null && (
-                  <>
-                    {" ・ "}
-                    {it.quantity}
-                    {it.unit ? ` ${it.unit}` : ""}
-                  </>
-                )}
+                {/* 数量・単位は UI から非表示（DB 値は保持）。 */}
                 {it.unit_price != null && (
                   <> ・ 単価 ¥{it.unit_price.toLocaleString()}</>
                 )}

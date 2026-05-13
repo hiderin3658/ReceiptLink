@@ -52,8 +52,10 @@ export function ocrToExpenseInput(
     raw_name: it.raw_name,
     display_name: "",
     category_id: mapCategoryHintToId(categories, it.category_hint),
-    quantity: it.quantity,
-    unit: it.unit ?? "",
+    // OCR が返した数量・単位は UI に出さない方針のためフォームには反映しない
+    // （Gemini プロンプトは現状維持。返ってきた値を破棄するだけ）
+    quantity: null,
+    unit: "",
     unit_price: null,
     total_price: Math.max(0, Math.round(it.total_price)),
     discount: 0,
