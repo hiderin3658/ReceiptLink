@@ -279,33 +279,10 @@ export function ExpenseForm(props: Props) {
                   </select>
                 </Field>
               </div>
-              <div className="grid gap-2 sm:grid-cols-4">
-                <Field label="数量">
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    step="0.001"
-                    min={0}
-                    value={item.quantity ?? ""}
-                    onChange={(e) =>
-                      updateItem(i, {
-                        quantity: e.target.value === "" ? null : Number(e.target.value),
-                      })
-                    }
-                    placeholder="1"
-                    className={inputCls}
-                  />
-                </Field>
-                <Field label="単位">
-                  <input
-                    type="text"
-                    value={item.unit ?? ""}
-                    onChange={(e) => updateItem(i, { unit: e.target.value })}
-                    placeholder="個 / g / パック"
-                    maxLength={20}
-                    className={inputCls}
-                  />
-                </Field>
+              {/* 数量・単位は UI から削除（DB スキーマは保持）。
+                  編集時は initial の値が items state にそのまま入り、
+                  入力欄が無いまま再 submit されるので過去データは保持される。 */}
+              <div className="grid gap-2 sm:grid-cols-2">
                 <Field label="金額（円）">
                   <input
                     type="number"
