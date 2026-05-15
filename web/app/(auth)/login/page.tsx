@@ -1,12 +1,67 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+
+// アプリ内ブラウザ（埋め込み WebView）からの Google OAuth は
+// Google のセキュリティポリシーで一律ブロックされる（disallowed_useragent / 403）。
+// ユーザーに外部ブラウザで開き直してもらう必要があるため、UA で検出する。
+type EmbeddedBrowser = {
+  app: "line" | "facebook" | "instagram" | "twitter" | "other";
+  label: string;
+  // 外部ブラウザで開き直す方法の案内文
+  hint: string;
+};
+
+function detectEmbeddedBrowser(ua: string): EmbeddedBrowser | null {
+  if (/Line\//i.test(ua)) {
+    return {
+      app: "line",
+      label: "LINE",
+      hint: "右下のメニュー（…アイコン）から「他のブラウザで開く」を選択してください。",
+    };
+  }
+  if (/FBAN|FBAV|FB_IAB|FB4A/i.test(ua)) {
+    return {
+      app: "facebook",
+      label: "Facebook / Messenger",
+      hint: "右上の「…」メニューから「ブラウザで開く」を選択してください。",
+    };
+  }
+  if (/Instagram/i.test(ua)) {
+    return {
+      app: "instagram",
+      label: "Instagram",
+      hint: "右上の「…」メニューから「ブラウザで開く」を選択してください。",
+    };
+  }
+  if (/Twitter|TwitterAndroid/i.test(ua)) {
+    return {
+      app: "twitter",
+      label: "X (Twitter)",
+      hint: "メニューから「ブラウザで開く」を選択してください。",
+    };
+  }
+  // Android の汎用 WebView マーカー（"; wv)" を含む）
+  if (/Android.*; wv\)/i.test(ua)) {
+    return {
+      app: "other",
+      label: "アプリ内ブラウザ",
+      hint: "メニューから「ブラウザで開く」を選択し、Chrome や Safari で開き直してください。",
+    };
+  }
+  return null;
+}
 
 function LoginContent() {
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
+  const [embedded, setEmbedded] = useState<EmbeddedBrowser | null>(null);
+
+  useEffect(() => {
+    setEmbedded(detectEmbeddedBrowser(navigator.userAgent));
+  }, []);
 
   const handleGoogleSignIn = async () => {
     const supabase = createClient();
@@ -34,9 +89,25 @@ function LoginContent() {
           </div>
         )}
 
+        {embedded && (
+          <div
+            role="alert"
+            className="space-y-2 rounded-md border border-[var(--color-destructive)] bg-[color-mix(in_oklch,var(--color-destructive)_10%,white)] p-3 text-sm text-[var(--color-destructive)]"
+          >
+            <p className="font-medium">
+              {embedded.label}内のブラウザでは Google ログインができません
+            </p>
+            <p className="text-xs leading-relaxed">
+              Google のセキュリティポリシーにより、アプリ内ブラウザからの認証はブロックされます。
+              {embedded.hint}
+            </p>
+          </div>
+        )}
+
         <button
           onClick={handleGoogleSignIn}
-          className="flex w-full items-center justify-center gap-3 rounded-md border border-[var(--color-border)] bg-white px-4 py-3 text-sm font-medium transition-colors hover:bg-[var(--color-muted)]"
+          disabled={!!embedded}
+          className="flex w-full items-center justify-center gap-3 rounded-md border border-[var(--color-border)] bg-white px-4 py-3 text-sm font-medium transition-colors hover:bg-[var(--color-muted)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"
         >
           <GoogleIcon />
           Google でログイン
