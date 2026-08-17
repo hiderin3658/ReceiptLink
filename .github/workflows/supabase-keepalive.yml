@@ -11,8 +11,11 @@
 #
 # ── 注意 ──────────────────────────────────────────────────────────────────
 #   - schedule はデフォルトブランチ (main) に存在しないと発火しない。必ず main にマージすること。
-#   - GitHub は 60 日間リポジトリ活動が無いと schedule を自動停止する。
-#   - 手動実行: Actions タブ → "Supabase Keepalive" → Run workflow (タイマー即時リセットにも使える)
+#   - GitHub は 60 日間リポジトリ活動 (＝コミット) が無いと schedule を自動停止する。
+#     本ワークフロー自身の実行では 60 日タイマーはリセットされないため、
+#     keep-workflows-alive.yml が定期的にコミットを作って停止を防いでいる。
+#   - 手動実行: Actions タブ → "Supabase Keepalive" → Run workflow
+#     (Supabase の 7 日 Auto-pause タイマーはリセットされるが、上記 60 日タイマーには影響しない)
 
 name: Supabase Keepalive
 

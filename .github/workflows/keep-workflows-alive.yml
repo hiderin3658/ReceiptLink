@@ -1,0 +1,73 @@
+# GitHub Actions の schedule 自動無効化を防ぐためのリポジトリ活動生成。
+#
+# GitHub は「60 日間リポジトリ活動が無い」と on: schedule のワークフローを自動的に無効化する。
+# 個人開発でコミット間隔が空くと supabase-keepalive.yml が停止し、Supabase の Auto-pause 回避が
+# 効かなくなるため、定期的にタイムスタンプファイルを更新してコミットし、60 日タイマーをリセットする。
+#
+# ── 前提 ──────────────────────────────────────────────────────────────────
+#   - リポジトリ → Settings → Actions → General → Workflow permissions が
+#     "Read and write permissions" であること。
+#     "Read repository contents..." のままだと、下の permissions では write に昇格できず push が失敗する。
+#   - main に branch protection / ruleset を追加した場合は、GITHUB_TOKEN の push が
+#     弾かれないか（bypass 許可が必要か）を確認すること。
+#
+# ── 注意 ──────────────────────────────────────────────────────────────────
+#   - schedule はデフォルトブランチ (main) に存在しないと発火しない。必ず main にマージすること。
+#   - 60 日タイマーをリセットするのはコミットのみ。ワークフローの実行だけではリセットされない。
+#     手動でリセットしたい場合は Actions タブ → "Keep Workflows Alive" → Run workflow
+#     （コミットが作られるため有効）。
+#   - GITHUB_TOKEN による push は他のワークフローを再帰的にトリガーしない仕様のため、無限ループにはならない。
+
+name: Keep Workflows Alive
+
+on:
+  schedule:
+    # 毎月 1 日と 15 日の UTC 03:00 (JST 12:00)。
+    # GitHub の schedule は混雑時に遅延・スキップされ得るため、60 日の猶予に対し月 2 回実行して余裕を持たせる。
+    - cron: "0 3 1,15 * *"
+  workflow_dispatch: {}
+
+# 重複起動を抑止
+concurrency:
+  group: keep-workflows-alive
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  touch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v7
+
+      - name: タイムスタンプを更新して main へコミット
+        run: |
+          set -euo pipefail
+
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > .github/last-activity.txt
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/last-activity.txt
+
+          if git diff --cached --quiet; then
+            echo "::warning::タイムスタンプに変化がないためコミットをスキップします。"
+            exit 0
+          fi
+
+          # [skip ci] は将来 push トリガのワークフローを追加した際の無駄な実行を防ぐための保険。
+          git commit -m "chore: リポジトリ活動タイムスタンプ更新 [skip ci]"
+
+          # 実行中に main が進んでいた場合に備え、1 度だけ rebase して再試行する。
+          # checkout は shallow clone のため、rebase の共通祖先を辿れるよう先に全履歴を取得する。
+          if ! git push; then
+            echo "::warning::push に失敗しました。rebase して再試行します。"
+            git fetch --unshallow || git fetch
+            git pull --rebase origin main
+            git push
+          fi
+
+          echo "✅ リポジトリ活動を記録しました ($(cat .github/last-activity.txt))"
